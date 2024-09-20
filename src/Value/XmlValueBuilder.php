@@ -53,12 +53,14 @@ class XmlValueBuilder
     /**
      * @param mixed $value
      */
-    public function addValue($value): void
+    public function addValue($value): XmlValueBuilder
     {
         $this->value = Option::some($value);
+
+        return $this;
     }
 
-    public function addChild(XmlValueBuilder $child): void
+    public function addChild(XmlValueBuilder $child): XmlValueBuilder
     {
         $childName = $child->getName();
         if (key_exists($childName, $this->children)) {
@@ -72,11 +74,15 @@ class XmlValueBuilder
         } else {
             $this->children[$childName] = $child;
         }
+
+        return $this;
     }
 
-    public function addCdata(string $data): void
+    public function addCdata(string $data): XmlValueBuilder
     {
         $this->cdata[] = $data;
+
+        return $this;
     }
 
     public function getName(): string
