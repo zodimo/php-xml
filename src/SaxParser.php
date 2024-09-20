@@ -52,20 +52,10 @@ class SaxParser
      *
      * @phpstan-ignore class.notFound
      */
-    public function __construct($parser)
+    private function __construct($parser)
     {
         $this->parser = $parser;
-        // @phpstan-ignore argument.type
-        xml_parser_set_option($this->parser, XML_OPTION_CASE_FOLDING, 0);
-        // @phpstan-ignore argument.type
-        xml_set_object($this->parser, $this);
-        // @phpstan-ignore argument.type
-        xml_set_element_handler($this->parser, [$this, 'startTag'], [$this, 'endTag']);
-        // @phpstan-ignore argument.type
-        xml_set_character_data_handler($this->parser, [$this, 'tagData']);
-        // @phpstan-ignore argument.type
-        xml_parser_set_option($this->parser, XML_OPTION_SKIP_WHITE, 1);
-        // xml_set_external_entity_ref_handler($this->parser, 'convertEntities');
+
         $this->path = [''];
         $this->collectedData = Option::none();
         $this->isCollecting = false;
@@ -73,19 +63,82 @@ class SaxParser
         $this->collectingFrom = Option::none();
     }
 
-    public static function create(): SaxParser
+    /**
+     * @return IOMonad<SaxParser,string>
+     */
+    public static function create(): IOMonad
     {
-        $parser = xml_parser_create('UTF-8');
+        $saxParser = new self(xml_parser_create('UTF-8'));
+        $saxParserResult = $saxParser->setOption(XML_OPTION_CASE_FOLDING, 0)
+            ->flatMap(fn ($sparser) => $sparser->setOption(XML_OPTION_SKIP_WHITE, 1))
+        ;
 
-        return new self($parser);
+        // @phpstan-ignore argument.type
+        xml_set_object($saxParser->parser, $saxParser);
+
+        // @phpstan-ignore argument.type
+        xml_set_element_handler($saxParser->parser, [$saxParser, 'startTag'], [$saxParser, 'endTag']);
+        // @phpstan-ignore argument.type
+        xml_set_character_data_handler($saxParser->parser, [$saxParser, 'tagData']);
+
+        // xml_set_external_entity_ref_handler($this->parser, 'convertEntities');
+
+        return $saxParserResult;
     }
 
     /**
-     * @return int
+     * Set option to XML parser.
+     *
+     * @param bool|int|string $value
+     *
+     * @return IOMonad<SaxParser,string>
+     *
+     * @see XML_OPTION_* constants
+     * @see http://php.net/manual/en/function.xml-parser-set-option.php
      */
-    public function getReadBuffer()
+    public function setOption(int $option, $value): IOMonad
+    {
+        // @phpstan-ignore argument.type
+        $result = xml_parser_set_option($this->parser, $option, $value);
+        if (false === $result) {
+            return IOMonad::fail('Could not set option');
+        }
+
+        // @phpstan-ignore return.type
+        return IOMonad::pure($this);
+    }
+
+    /**
+     * Get option from XML parser.
+     *
+     * @see XML_OPTION_* constants
+     * @see http://php.net/manual/en/function.xml-parser-set-option.php
+     *
+     * @return bool|int|string
+     */
+    public function getParserOption(int $option)
+    {
+        // @phpstan-ignore argument.type
+        return xml_parser_get_option($this->parser, $option);
+    }
+
+    public function getReadBuffer(): int
     {
         return $this->readBuffer;
+    }
+
+    /**
+     * @return IOMonad<SaxParser,string>
+     */
+    public function setReadBuffer(int $readBuffer): IOMonad
+    {
+        if ($readBuffer < 1) {
+            return IOMonad::fail('Readbuffer must be larger than 1');
+        }
+        $this->readBuffer = $readBuffer;
+
+        // @phpstan-ignore return.type
+        return IOMonad::pure($this);
     }
 
     /**

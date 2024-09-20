@@ -19,7 +19,9 @@ class SaxParserPerfTest extends TestCase
 
     public function testCanCreate(): void
     {
-        $parser = SaxParser::create();
+        $parserResult = SaxParser::create();
+        $this->assertTrue($parserResult->isSuccess());
+        $parser = $parserResult->unwrapSuccess($this->createClosureNotCalled());
         $this->assertInstanceOf(SaxParser::class, $parser);
     }
 
@@ -28,7 +30,9 @@ class SaxParserPerfTest extends TestCase
         $callback = $this->createClosureMock();
         $callback->expects($this->exactly(100000))->method('__invoke');
         $filePath = __DIR__.'/../Resources/100k.xml.gz';
-        $parser = SaxParser::create();
+        $parserResult = SaxParser::create();
+        $this->assertTrue($parserResult->isSuccess());
+        $parser = $parserResult->unwrapSuccess($this->createClosureNotCalled());
         $parser->registerCallback('/root/user', $callback);
         $result = $parser->parseFile($filePath);
         $this->assertTrue($result->isSuccess());
@@ -39,7 +43,9 @@ class SaxParserPerfTest extends TestCase
         $callback = $this->createClosureMock();
         $callback->expects($this->exactly(1000))->method('__invoke');
         $filePath = __DIR__.'/../Resources/1k.xml.gz';
-        $parser = SaxParser::create();
+        $parserResult = SaxParser::create();
+        $this->assertTrue($parserResult->isSuccess());
+        $parser = $parserResult->unwrapSuccess($this->createClosureNotCalled());
         $parser->registerCallback('/root/user', $callback);
         $result = $parser->parseFile($filePath);
         $this->assertTrue($result->isSuccess());

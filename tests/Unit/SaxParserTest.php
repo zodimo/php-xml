@@ -19,14 +19,18 @@ class SaxParserTest extends TestCase
 
     public function testCanCreate(): void
     {
-        $parser = SaxParser::create();
+        $parserResult = SaxParser::create();
+        $this->assertTrue($parserResult->isSuccess());
+        $parser = $parserResult->unwrapSuccess($this->createClosureNotCalled());
         $this->assertInstanceOf(SaxParser::class, $parser);
     }
 
     public function testCanParseString1(): void
     {
         $xmlstring = '<root/>';
-        $parser = SaxParser::create();
+        $parserResult = SaxParser::create();
+        $this->assertTrue($parserResult->isSuccess());
+        $parser = $parserResult->unwrapSuccess($this->createClosureNotCalled());
         $parser->registerCallback('/', $this->createClosureMock());
         $result = $parser->parseString($xmlstring, true);
         $this->assertTrue($result->isSuccess());
@@ -40,7 +44,9 @@ class SaxParserTest extends TestCase
             </root>
             XML;
 
-        $parser = SaxParser::create();
+        $parserResult = SaxParser::create();
+        $this->assertTrue($parserResult->isSuccess());
+        $parser = $parserResult->unwrapSuccess($this->createClosureNotCalled());
         $parser->registerCallback('/root/username', $this->createClosureMock());
         $result = $parser->parseString($xmlstring, true);
         $this->assertTrue($result->isSuccess());
