@@ -21,7 +21,7 @@ class XmlValue
     private Option $value;
 
     /**
-     * @var array<string,array<XmlValue>|XmlValue>
+     * @var array<string,array<XmlValue>>
      */
     private array $children;
 
@@ -31,10 +31,10 @@ class XmlValue
     private array $cdata;
 
     /**
-     * @param array<string,mixed>                    $attributes
-     * @param Option<mixed>                          $value
-     * @param array<string,array<XmlValue>|XmlValue> $children
-     * @param array<string>                          $cdata
+     * @param array<string,mixed>           $attributes
+     * @param Option<mixed>                 $value
+     * @param array<string,array<XmlValue>> $children
+     * @param array<string>                 $cdata
      */
     private function __construct(string $name, array $attributes, Option $value, array $children, array $cdata)
     {
@@ -46,10 +46,10 @@ class XmlValue
     }
 
     /**
-     * @param array<string,mixed>                    $attributes
-     * @param Option<mixed>                          $value
-     * @param array<string,array<XmlValue>|XmlValue> $children
-     * @param array<string>                          $cdata
+     * @param array<string,mixed>           $attributes
+     * @param Option<mixed>                 $value
+     * @param array<string,array<XmlValue>> $children
+     * @param array<string>                 $cdata
      */
     public static function create(string $name, array $attributes, Option $value, array $children, array $cdata): self
     {
@@ -78,7 +78,7 @@ class XmlValue
     }
 
     /**
-     * @return array<string,array<XmlValue>|XmlValue>
+     * @return array<string,array<XmlValue>>
      */
     public function getChildren(): array
     {

@@ -96,7 +96,7 @@ class XmlValueBuilderTest extends TestCase
             ['name' => 'Joe'],
             Option::none(),
             [
-                $child->getName() => $expectedChild,
+                $child->getName() => [$expectedChild],
             ],
             []
         );

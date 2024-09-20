@@ -66,7 +66,7 @@ class XmlValueBuilderTest extends TestCase
         $this->assertEquals('root', $builder->getName(), 'name');
         $this->assertEquals(['name' => 'Joe'], $builder->getAttributes(), 'attributes');
         $this->assertEquals([], $builder->getCdata(), 'cdata');
-        $this->assertEquals(['user' => $child], $builder->getChildren(), 'children');
+        $this->assertEquals(['user' => [$child]], $builder->getChildren(), 'children');
         $this->assertEquals(Option::none(), $builder->getValue(), 'value');
     }
 

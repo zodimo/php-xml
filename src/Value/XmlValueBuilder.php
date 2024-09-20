@@ -21,7 +21,7 @@ class XmlValueBuilder
     private Option $value;
 
     /**
-     * @var array<string,array<XmlValueBuilder>|XmlValueBuilder>
+     * @var array<string,array<XmlValueBuilder>>
      */
     private array $children;
 
@@ -62,18 +62,7 @@ class XmlValueBuilder
 
     public function addChild(XmlValueBuilder $child): XmlValueBuilder
     {
-        $childName = $child->getName();
-        if (key_exists($childName, $this->children)) {
-            // convert to array
-            $prevValue = $this->children[$childName];
-            if (is_array($prevValue)) {
-                $this->children[$childName] = [...$prevValue, $child];
-            } else {
-                $this->children[$childName] = [$prevValue, $child];
-            }
-        } else {
-            $this->children[$childName] = $child;
-        }
+        $this->children[$child->getName()][] = $child;
 
         return $this;
     }
@@ -107,7 +96,7 @@ class XmlValueBuilder
     }
 
     /**
-     * @return array<string,array<XmlValueBuilder>|XmlValueBuilder>
+     * @return array<string,array<XmlValueBuilder>>
      */
     public function getChildren(): array
     {
@@ -127,11 +116,7 @@ class XmlValueBuilder
         // build chidren
         $children = [];
         foreach ($this->getChildren() as $childName => $child) {
-            if (is_array($child)) {
-                $children[$childName] = array_map(fn (XmlValueBuilder $childBuilder) => $childBuilder->build(), $child);
-            } else {
-                $children[$childName] = $child->build();
-            }
+            $children[$childName] = array_map(fn (XmlValueBuilder $childBuilder) => $childBuilder->build(), $child);
         }
 
         return XmlValue::create(

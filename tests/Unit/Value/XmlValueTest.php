@@ -97,7 +97,7 @@ class XmlValueTest extends TestCase
             ['name' => 'Joe'],
             Option::none(),
             [
-                $child->getName() => $child,
+                $child->getName() => [$child],
             ],
             []
         );
@@ -105,7 +105,7 @@ class XmlValueTest extends TestCase
         $this->assertEquals('root', $xmlValue->getName(), 'name');
         $this->assertEquals(['name' => 'Joe'], $xmlValue->getAttributes(), 'attributes');
         $this->assertEquals([], $xmlValue->getCdata(), 'cdata');
-        $this->assertEquals(['user' => $child], $xmlValue->getChildren(), 'children');
+        $this->assertEquals(['user' => [$child]], $xmlValue->getChildren(), 'children');
         $this->assertEquals(Option::none(), $xmlValue->getValue(), 'value');
     }
 
