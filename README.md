@@ -1,6 +1,3 @@
 # XML
 
-declarative XML parser
-
-- XPATH
-- XQUERY
+SAX based parser
