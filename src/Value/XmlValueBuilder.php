@@ -16,9 +16,9 @@ class XmlValueBuilder
     private array $attributes;
 
     /**
-     * @var Option<mixed>
+     * @var array<string>
      */
-    private Option $value;
+    private array $values;
 
     /**
      * @var array<string,array<XmlValueBuilder>>
@@ -37,7 +37,7 @@ class XmlValueBuilder
     {
         $this->name = $name;
         $this->attributes = $attributes;
-        $this->value = Option::none();
+        $this->values = [];
         $this->children = [];
         $this->cdata = [];
     }
@@ -50,12 +50,9 @@ class XmlValueBuilder
         return new self($name, $attributes);
     }
 
-    /**
-     * @param mixed $value
-     */
-    public function addValue($value): XmlValueBuilder
+    public function addValue(string $value): XmlValueBuilder
     {
-        $this->value = Option::some($value);
+        $this->values = [...$this->values, $value];
 
         return $this;
     }
@@ -88,11 +85,11 @@ class XmlValueBuilder
     }
 
     /**
-     * @return Option<mixed>
+     * @return array<string>
      */
-    public function getValue(): Option
+    public function getValues(): array
     {
-        return $this->value;
+        return $this->values;
     }
 
     /**
@@ -119,10 +116,17 @@ class XmlValueBuilder
             $children[$childName] = array_map(fn (XmlValueBuilder $childBuilder) => $childBuilder->build(), $child);
         }
 
+        $values = $this->getValues();
+        if (count($values) > 0) {
+            $value = Option::some(implode('', $values));
+        } else {
+            $value = Option::none();
+        }
+
         return XmlValue::create(
             $this->getName(),
             $this->getAttributes(),
-            $this->getValue(),
+            $value,
             $children,
             $this->getCdata()
         );

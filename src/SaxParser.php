@@ -69,26 +69,26 @@ class SaxParser implements XmlParserInterface, HasHandlers
     }
 
     /**
-     * @return IOMonad<SaxParser,string>
+     * @return IOMonad<self,string>
      */
     public static function create(): IOMonad
     {
-        $saxParser = new self(xml_parser_create('UTF-8'));
-        $saxParserResult = $saxParser->setOption(XML_OPTION_CASE_FOLDING, 0)
+        $mParser = new self(xml_parser_create('UTF-8'));
+        $mParserResult = $mParser->setOption(XML_OPTION_CASE_FOLDING, 0)
             ->flatMap(fn ($sparser) => $sparser->setOption(XML_OPTION_SKIP_WHITE, 1))
         ;
 
         // @phpstan-ignore argument.type
-        xml_set_object($saxParser->parser, $saxParser);
+        xml_set_object($mParser->parser, $mParser);
 
         // @phpstan-ignore argument.type
-        xml_set_element_handler($saxParser->parser, [$saxParser, 'startTag'], [$saxParser, 'endTag']);
+        xml_set_element_handler($mParser->parser, [$mParser, 'startTag'], [$mParser, 'endTag']);
         // @phpstan-ignore argument.type
-        xml_set_character_data_handler($saxParser->parser, [$saxParser, 'tagData']);
+        xml_set_character_data_handler($mParser->parser, [$mParser, 'tagData']);
 
         // xml_set_external_entity_ref_handler($this->parser, 'convertEntities');
 
-        return $saxParserResult;
+        return $mParserResult;
     }
 
     /**
@@ -96,7 +96,7 @@ class SaxParser implements XmlParserInterface, HasHandlers
      *
      * @param bool|int|string $value
      *
-     * @return IOMonad<SaxParser,string>
+     * @return IOMonad<self,string>
      *
      * @see XML_OPTION_* constants
      * @see http://php.net/manual/en/function.xml-parser-set-option.php
@@ -133,7 +133,7 @@ class SaxParser implements XmlParserInterface, HasHandlers
     }
 
     /**
-     * @return IOMonad<SaxParser,string>
+     * @return IOMonad<self,string>
      */
     public function setReadBuffer(int $readBuffer): IOMonad
     {
@@ -165,7 +165,9 @@ class SaxParser implements XmlParserInterface, HasHandlers
         } elseif ($this->hasHandler($this->pathAsString())) {
             // cannot add addition handlers when already collecting..
             $this->collectingFrom = Option::some($this->pathAsString());
-            $this->collectedData = Option::some(XmlValueBuilder::create($name, $attributes));
+            $xmlValue = XmlValueBuilder::create($name, $attributes);
+
+            $this->collectedData = Option::some($xmlValue);
 
             $this->isCollecting = true;
         }
@@ -197,7 +199,8 @@ class SaxParser implements XmlParserInterface, HasHandlers
 
                 throw new \RuntimeException((string) $error);
             }
-
+            $this->isCollecting = false;
+            $this->collectingFrom = Option::none();
             $this->collectedData = Option::none();
         }
 
@@ -220,12 +223,16 @@ class SaxParser implements XmlParserInterface, HasHandlers
      */
     public function tagData($_, string $data): void
     {
-        $this->addData($data);
-    }
-
-    public function addData(string $data): void
-    {
+        /**
+         * Skip white space
+         * and the concatenate all non empty parts.
+         */
         if ($this->isCollecting) {
+            $trimmedData = trim($data);
+            if (0 === mb_strlen($trimmedData)) {
+                return;
+            }
+
             /**
              * data path..
              * path /root/user/name
@@ -233,8 +240,7 @@ class SaxParser implements XmlParserInterface, HasHandlers
              *
              *  We need something like a lens or a cursor
              *
-             * IF we have to wonder how we should represent it to not loose data,
-             * we are using the wrong abstractions
+             * collectedData can be deeptly nested..
              */
             $this->collectedData = $this->collectedData->map(fn ($valueBuilder) => $valueBuilder->addValue($data));
         }

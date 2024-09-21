@@ -27,27 +27,33 @@ class SaxParserTest extends TestCase
 
     public function testCanParseFile1k(): void
     {
-        $callback = $this->createClosureMock();
-        $callback->expects($this->exactly(1000))->method('__invoke');
+        $counter = 0;
+        $counterCallback = function ($data) use (&$counter) {
+            ++$counter;
+        };
         $filePath = __DIR__.'/../Resources/1k.xml';
         $parserResult = SaxParser::create();
         $this->assertTrue($parserResult->isSuccess());
         $parser = $parserResult->unwrapSuccess($this->createClosureNotCalled());
-        $parser->registerCallback('/root/user', $callback);
+        $parser->registerCallback('/root/user', $counterCallback);
         $result = $parser->parseFile($filePath);
         $this->assertTrue($result->isSuccess());
+        $this->assertEquals(1000, $counter);
     }
 
     public function testCanParseFile1kGzipped(): void
     {
-        $callback = $this->createClosureMock();
-        $callback->expects($this->exactly(1000))->method('__invoke');
+        $counter = 0;
+        $counterCallback = function ($data) use (&$counter) {
+            ++$counter;
+        };
         $filePath = __DIR__.'/../Resources/1k.xml.gz';
         $parserResult = SaxParser::create();
         $this->assertTrue($parserResult->isSuccess());
         $parser = $parserResult->unwrapSuccess($this->createClosureNotCalled());
-        $parser->registerCallback('/root/user', $callback);
+        $parser->registerCallback('/root/user', $counterCallback);
         $result = $parser->parseFile($filePath);
         $this->assertTrue($result->isSuccess());
+        $this->assertEquals(1000, $counter);
     }
 }
