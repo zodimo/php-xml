@@ -6,11 +6,17 @@ namespace Zodimo\Xml;
 
 use Zodimo\BaseReturn\IOMonad;
 use Zodimo\BaseReturn\Option;
+use Zodimo\Xml\Traits\HandlersTrait;
 use Zodimo\Xml\Value\XmlValue;
 use Zodimo\Xml\Value\XmlValueBuilder;
 
-class SaxParser
+/**
+ * Currently broken implementation.
+ */
+class SaxParser implements XmlParserInterface, HasHandlers
 {
+    use HandlersTrait;
+
     /**
      * @var resource|\XMLParser
      *
@@ -43,11 +49,6 @@ class SaxParser
     private Option $collectedData;
 
     /**
-     * @var array<string,callable>
-     */
-    private array $callbacks;
-
-    /**
      * @param resource|\XMLParser $parser
      *
      * @phpstan-ignore class.notFound
@@ -61,6 +62,8 @@ class SaxParser
         $this->isCollecting = false;
         $this->callbacks = [];
         $this->collectingFrom = Option::none();
+        $this->callbackRegistrations = [];
+        $this->handlers = [];
     }
 
     /**
@@ -156,11 +159,12 @@ class SaxParser
 
         if ($this->isCollecting) {
             // just append...
-            $this->collectedData = Option::some(XmlValueBuilder::create($name, $attributes));
+            $this->collectedData = $this->collectedData->map(fn ($valueBuilder) => $valueBuilder->addChild(XmlValueBuilder::create($name, $attributes)));
         } elseif ($this->hasHandler($this->pathAsString())) {
             // cannot add addition handlers when already collecting..
             $this->collectingFrom = Option::some($this->pathAsString());
-            $this->collectedData->map(fn ($valueBuilder) => $valueBuilder->addChild(XmlValueBuilder::create($name, $attributes)));
+            $this->collectedData = Option::some(XmlValueBuilder::create($name, $attributes));
+
             $this->isCollecting = true;
         }
     }
@@ -221,14 +225,22 @@ class SaxParser
     public function addData(string $data): void
     {
         if ($this->isCollecting) {
-            $this->collectedData->map(fn ($valueBuilder) => $valueBuilder->addValue($data));
+            /**
+             * data path..
+             * path /root/user/name
+             * data starts at user.
+             *
+             *  We need something like a lens or a cursor
+             *
+             * IF we have to wonder how we should represent it to not loose data,
+             * we are using the wrong abstractions
+             */
+            $this->collectedData = $this->collectedData->map(fn ($valueBuilder) => $valueBuilder->addValue($data));
         }
     }
 
     /**
-     * Summary of parseString.
-     *
-     * @return IOMonad<void,mixed>
+     * @return IOMonad<HasHandlers,mixed>
      */
     public function parseString(string $data, bool $isFinal): IOMonad
     {
@@ -249,7 +261,7 @@ class SaxParser
         if (1 === $result) {
             // success
             // @phpstan-ignore return.type
-            return IOMonad::pure(null);
+            return IOMonad::pure($this);
         }
 
         // failure
@@ -269,9 +281,11 @@ class SaxParser
     }
 
     /**
-     * @return IOMonad<void,mixed>
+     * Support xml and xml.gz.
+     *
+     * @return IOMonad<HasHandlers,mixed>
      */
-    public function parseFile(string $file)
+    public function parseFile(string $file): IOMonad
     {
         /**
          * support for gzip.
@@ -294,7 +308,7 @@ class SaxParser
         if (!$handle) {
             return IOMonad::fail(new \Exception('Unable to open file.'));
         }
-        $result = IOMonad::pure(null);
+        $result = IOMonad::pure($this);
         while (!feof($handle) and $result->isSuccess()) {
             $data = fread($handle, $this->readBuffer);
             if (false === $data) {
@@ -307,11 +321,6 @@ class SaxParser
 
         // @phpstan-ignore return.type
         return $result;
-    }
-
-    public function registerCallback(string $path, callable $callback): void
-    {
-        $this->callbacks[$path] = $callback;
     }
 
     private function hasHandler(string $path): bool
@@ -352,7 +361,7 @@ class SaxParser
     }
 
     /**
-     * @return \Zodimo\BaseReturn\Option<callable>
+     * @return Option<callable>
      */
     private function getHandlerForPath(string $path): Option
     {
