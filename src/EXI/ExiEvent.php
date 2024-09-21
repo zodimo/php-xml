@@ -22,65 +22,68 @@ class ExiEvent
     public const TAG_ENTITY_REFERENCE = 'ER';
     public const TAG_SELF_CONTAINED = 'SC';
 
-    private GrammerNotation $grammerNotation;
+    private string $grammerNotation;
 
-    private function __construct(GrammerNotation $grammerNotation)
+    /**
+     * @var array<string,mixed>
+     */
+    private array $parameters;
+
+    /**
+     * @param array<string,mixed> $parameters
+     */
+    private function __construct(string $grammerNotation, array $parameters = [])
     {
         $this->grammerNotation = $grammerNotation;
+        $this->parameters = $parameters;
     }
 
     public static function startDocument(): ExiEvent
     {
-        return new self(GrammerNotation::create(ExiEvent::TAG_START_DOCUMENT));
+        return new self(ExiEvent::TAG_START_DOCUMENT);
     }
 
     public static function endDocument(): ExiEvent
     {
-        return new self(GrammerNotation::create(ExiEvent::TAG_END_DOCUMENT));
+        return new self(ExiEvent::TAG_END_DOCUMENT);
     }
 
     public static function startElement(string $elementName): ExiEvent
     {
         return new self(
-            GrammerNotation::create(
-                ExiEvent::TAG_START_ELEMENT,
-                [
-                    'elementName' => $elementName,
-                    'subType' => '*',
-                ]
-            )
+            ExiEvent::TAG_START_ELEMENT,
+            [
+                'elementName' => $elementName,
+                'subType' => '*',
+            ]
         );
     }
 
     public static function startElementQName(string $elementName): ExiEvent
     {
         return new self(
-            GrammerNotation::create(
-                ExiEvent::TAG_START_ELEMENT,
-                [
-                    'elementName' => $elementName,
-                    'subType' => 'qname',
-                ]
-            )
+            ExiEvent::TAG_START_ELEMENT,
+            [
+                'elementName' => $elementName,
+                'subType' => 'qname',
+            ]
         );
     }
 
     public static function startElementUri(string $elementName): ExiEvent
     {
         return new self(
-            GrammerNotation::create(
-                ExiEvent::TAG_START_ELEMENT,
-                [
-                    'elementName' => $elementName,
-                    'subType' => 'uri:*',
-                ]
-            )
+            ExiEvent::TAG_START_ELEMENT,
+            [
+                'elementName' => $elementName,
+                'subType' => 'uri:*',
+            ]
         );
     }
 
     public static function endElement(): ExiEvent
     {
-        return new self(GrammerNotation::create(ExiEvent::TAG_END_ELEMENT));
+        return new self(ExiEvent::TAG_END_ELEMENT);
     }
 
     /**
@@ -89,14 +92,12 @@ class ExiEvent
     public static function attribute(string $attributeName, $attributeValue): ExiEvent
     {
         return new self(
-            GrammerNotation::create(
-                ExiEvent::TAG_ATTRIBUTE,
-                [
-                    'attributeName' => $attributeName,
-                    'attributeValue' => $attributeValue,
-                    'subType' => '*',
-                ]
-            )
+            ExiEvent::TAG_ATTRIBUTE,
+            [
+                'attributeName' => $attributeName,
+                'attributeValue' => $attributeValue,
+                'subType' => '*',
+            ]
         );
     }
 
@@ -106,14 +107,12 @@ class ExiEvent
     public static function attributeQName(string $attributeName, $attributeValue): ExiEvent
     {
         return new self(
-            GrammerNotation::create(
-                ExiEvent::TAG_ATTRIBUTE,
-                [
-                    'attributeName' => $attributeName,
-                    'attributeValue' => $attributeValue,
-                    'subType' => 'qname',
-                ]
-            )
+            ExiEvent::TAG_ATTRIBUTE,
+            [
+                'attributeName' => $attributeName,
+                'attributeValue' => $attributeValue,
+                'subType' => 'qname',
+            ]
         );
     }
 
@@ -123,61 +122,65 @@ class ExiEvent
     public static function attributeUri(string $attributeName, $attributeValue): ExiEvent
     {
         return new self(
-            GrammerNotation::create(
-                ExiEvent::TAG_ATTRIBUTE,
-                [
-                    'attributeName' => $attributeName,
-                    'attributeValue' => $attributeValue,
-                    'subType' => 'uri:*',
-                ]
-            )
+            ExiEvent::TAG_ATTRIBUTE,
+            [
+                'attributeName' => $attributeName,
+                'attributeValue' => $attributeValue,
+                'subType' => 'uri:*',
+            ]
         );
     }
 
     public static function characters(string $data): ExiEvent
     {
         return new self(
-            GrammerNotation::create(
-                ExiEvent::TAG_CHARACTERS,
-                [
-                    'characters' => $data,
-                ]
-            )
+            ExiEvent::TAG_CHARACTERS,
+            [
+                'characters' => $data,
+            ]
         );
     }
 
     public static function namespaceDeclaration(): ExiEvent
     {
-        return new self(GrammerNotation::create(ExiEvent::TAG_NAMESPACE_DECLARATION));
+        return new self(ExiEvent::TAG_NAMESPACE_DECLARATION);
     }
 
     public static function comment(): ExiEvent
     {
-        return new self(GrammerNotation::create(ExiEvent::TAG_COMMENT));
+        return new self(ExiEvent::TAG_COMMENT);
     }
 
     public static function processInstruction(): ExiEvent
     {
-        return new self(GrammerNotation::create(ExiEvent::TAG_PROCESS_INSTRUCTION));
+        return new self(ExiEvent::TAG_PROCESS_INSTRUCTION);
     }
 
     public static function docType(): ExiEvent
     {
-        return new self(GrammerNotation::create(ExiEvent::TAG_DOC_TYPE));
+        return new self(ExiEvent::TAG_DOC_TYPE);
     }
 
     public static function entityReference(): ExiEvent
     {
-        return new self(GrammerNotation::create(ExiEvent::TAG_ENTITY_REFERENCE));
+        return new self(ExiEvent::TAG_ENTITY_REFERENCE);
     }
 
     public static function selfContained(): ExiEvent
     {
-        return new self(GrammerNotation::create(ExiEvent::TAG_SELF_CONTAINED));
+        return new self(ExiEvent::TAG_SELF_CONTAINED);
     }
 
-    public function getGrammerNotation(): GrammerNotation
+    public function getGrammerNotation(): string
     {
         return $this->grammerNotation;
+    }
+
+    /**
+     * @return array<string,mixed>
+     */
+    public function getParameters(): array
+    {
+        return $this->parameters;
     }
 }
