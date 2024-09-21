@@ -24,4 +24,25 @@ class ExiParserTest extends TestCase
         $parser = $parserResult->unwrapSuccess($this->createClosureNotCalled());
         $this->assertInstanceOf(ExiParser::class, $parser);
     }
+
+    public function testCanParseString1(): void
+    {
+        $xmlstring = '<root/>';
+        $parserResult = ExiParser::create();
+
+        $expectedEvents = [];
+
+        $collectedEvents = [];
+        $callback = function (array $events) use (&$collectedEvents) {
+            $collectedEvents = $events;
+        };
+
+        $this->assertTrue($parserResult->isSuccess());
+        $parser = $parserResult->unwrapSuccess($this->createClosureNotCalled());
+        $parser->registerCallback('/', $callback);
+        $result = $parser->parseString($xmlstring, true);
+        $this->assertTrue($result->isSuccess());
+
+        $this->assertEquals($expectedEvents, $collectedEvents);
+    }
 }

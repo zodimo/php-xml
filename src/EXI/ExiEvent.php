@@ -41,17 +41,41 @@ class ExiEvent
 
     public static function startElement(string $elementName): ExiEvent
     {
-        return new self(GrammerNotation::create(ExiEvent::TAG_START_ELEMENT, ['subType' => '*']));
+        return new self(
+            GrammerNotation::create(
+                ExiEvent::TAG_START_ELEMENT,
+                [
+                    'elementName' => $elementName,
+                    'subType' => '*',
+                ]
+            )
+        );
     }
 
-    public static function startElementQName(): ExiEvent
+    public static function startElementQName(string $elementName): ExiEvent
     {
-        return new self(GrammerNotation::create(ExiEvent::TAG_START_ELEMENT, ['subType' => 'qname']));
+        return new self(
+            GrammerNotation::create(
+                ExiEvent::TAG_START_ELEMENT,
+                [
+                    'elementName' => $elementName,
+                    'subType' => 'qname',
+                ]
+            )
+        );
     }
 
-    public static function startElementUri(): ExiEvent
+    public static function startElementUri(string $elementName): ExiEvent
     {
-        return new self(GrammerNotation::create(ExiEvent::TAG_START_ELEMENT, ['subType' => 'uri:*']));
+        return new self(
+            GrammerNotation::create(
+                ExiEvent::TAG_START_ELEMENT,
+                [
+                    'elementName' => $elementName,
+                    'subType' => 'uri:*',
+                ]
+            )
+        );
     }
 
     public static function endElement(): ExiEvent
@@ -64,22 +88,62 @@ class ExiEvent
      */
     public static function attribute(string $attributeName, $attributeValue): ExiEvent
     {
-        return new self(GrammerNotation::create(ExiEvent::TAG_ATTRIBUTE, ['subType' => '*']));
+        return new self(
+            GrammerNotation::create(
+                ExiEvent::TAG_ATTRIBUTE,
+                [
+                    'attributeName' => $attributeName,
+                    'attributeValue' => $attributeValue,
+                    'subType' => '*',
+                ]
+            )
+        );
     }
 
-    public static function attributeQName(): ExiEvent
+    /**
+     * @param mixed $attributeValue
+     */
+    public static function attributeQName(string $attributeName, $attributeValue): ExiEvent
     {
-        return new self(GrammerNotation::create(ExiEvent::TAG_ATTRIBUTE, ['subType' => 'qname']));
+        return new self(
+            GrammerNotation::create(
+                ExiEvent::TAG_ATTRIBUTE,
+                [
+                    'attributeName' => $attributeName,
+                    'attributeValue' => $attributeValue,
+                    'subType' => 'qname',
+                ]
+            )
+        );
     }
 
-    public static function attributeUri(): ExiEvent
+    /**
+     * @param mixed $attributeValue
+     */
+    public static function attributeUri(string $attributeName, $attributeValue): ExiEvent
     {
-        return new self(GrammerNotation::create(ExiEvent::TAG_ATTRIBUTE, ['subType' => 'uri:*']));
+        return new self(
+            GrammerNotation::create(
+                ExiEvent::TAG_ATTRIBUTE,
+                [
+                    'attributeName' => $attributeName,
+                    'attributeValue' => $attributeValue,
+                    'subType' => 'uri:*',
+                ]
+            )
+        );
     }
 
     public static function characters(string $data): ExiEvent
     {
-        return new self(GrammerNotation::create(ExiEvent::TAG_CHARACTERS));
+        return new self(
+            GrammerNotation::create(
+                ExiEvent::TAG_CHARACTERS,
+                [
+                    'characters' => $data,
+                ]
+            )
+        );
     }
 
     public static function namespaceDeclaration(): ExiEvent

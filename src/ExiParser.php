@@ -40,15 +40,14 @@ class ExiParser implements XmlParserInterface, HasHandlers
 
     private bool $isCollecting;
 
-    /**
-     * @var Option<string>
-     */
-    private Option $collectingFrom;
+    private ?string $collectingFromPath;
 
     /**
-     * @var array<ExiEvent>
+     * @var ?callable(ExiEvent):void
      */
-    private array $collectedEvents;
+    private $activeCallback;
+
+    private string $pathString;
 
     /**
      * @param resource|\XMLParser $parser
@@ -60,32 +59,33 @@ class ExiParser implements XmlParserInterface, HasHandlers
         $this->parser = $parser;
 
         $this->path = [''];
-        $this->collectedEvents = [];
+        $this->pathString = '';
         $this->isCollecting = false;
-        $this->collectingFrom = Option::none();
+        $this->activeCallback = null;
+        $this->collectingFromPath = null;
     }
 
     /**
-     * @return IOMonad<SaxParser,string>
+     * @return IOMonad<self,string>
      */
     public static function create(): IOMonad
     {
-        $saxParser = new self(xml_parser_create('UTF-8'));
-        $saxParserResult = $saxParser->setOption(XML_OPTION_CASE_FOLDING, 0)
+        $mParser = new self(xml_parser_create('UTF-8'));
+        $mParserResult = $mParser->setOption(XML_OPTION_CASE_FOLDING, 0)
             ->flatMap(fn ($sparser) => $sparser->setOption(XML_OPTION_SKIP_WHITE, 1))
         ;
 
         // @phpstan-ignore argument.type
-        xml_set_object($saxParser->parser, $saxParser);
+        xml_set_object($mParser->parser, $mParser);
 
         // @phpstan-ignore argument.type
-        xml_set_element_handler($saxParser->parser, [$saxParser, 'startTag'], [$saxParser, 'endTag']);
+        xml_set_element_handler($mParser->parser, [$mParser, 'startTag'], [$mParser, 'endTag']);
         // @phpstan-ignore argument.type
-        xml_set_character_data_handler($saxParser->parser, [$saxParser, 'tagData']);
+        xml_set_character_data_handler($mParser->parser, [$mParser, 'tagData']);
 
         // xml_set_external_entity_ref_handler($this->parser, 'convertEntities');
 
-        return $saxParserResult;
+        return $mParserResult;
     }
 
     /**
@@ -93,7 +93,7 @@ class ExiParser implements XmlParserInterface, HasHandlers
      *
      * @param bool|int|string $value
      *
-     * @return IOMonad<SaxParser,string>
+     * @return IOMonad<self,string>
      *
      * @see XML_OPTION_* constants
      * @see http://php.net/manual/en/function.xml-parser-set-option.php
@@ -130,7 +130,7 @@ class ExiParser implements XmlParserInterface, HasHandlers
     }
 
     /**
-     * @return IOMonad<SaxParser,string>
+     * @return IOMonad<self,string>
      */
     public function setReadBuffer(int $readBuffer): IOMonad
     {
@@ -151,89 +151,75 @@ class ExiParser implements XmlParserInterface, HasHandlers
      * Handles start tag.
      * start_element_handler(XMLParser $parser, string $name, array $attributes): void.
      *
-     * @param mixed               $_
+     * @param resource|\XMLParser $parser
      * @param array<string,mixed> $attributes
+     *
+     * @phpstan-ignore class.notFound
      */
-    public function startTag($_, string $name, array $attributes): void
+    public function startTag($parser, string $name, array $attributes): void
     {
-        // $this->currentTag = $name;
-
-        $this->addNodeToPath($name);
+        $this->pushNodeToPath($name);
+        if (!$this->isCollecting) {
+            $this->activeCallback = $this->getHandlerForPath($this->pathAsString())->match(
+                fn (callable $cb) => $cb,
+                fn () => null
+            );
+            if (!is_null($this->activeCallback)) {
+                $this->isCollecting = true;
+                $this->collectingFromPath = $this->pathAsString();
+            }
+        }
 
         if ($this->isCollecting) {
-            // just append...
-            // $this->collectedEvents = $this->collectedEvents->map(fn ($valueBuilder) => $valueBuilder->addChild(XmlValueBuilder::create($name, $attributes)));
-            $this->collectedEvents[] = ExiEvent::startElement($name);
-            foreach ($attributes as $attributeName => $attributeValue) {
-                $this->collectedEvents[] = ExiEvent::attribute($attributeName, $attributeValue);
-            }
-        } elseif ($this->hasHandler($this->pathAsString())) {
-            // cannot add addition handlers when already collecting..
-            $this->collectingFrom = Option::some($this->pathAsString());
-            $this->collectedEvents[] = ExiEvent::startElement($name);
-            foreach ($attributes as $attributeName => $attributeValue) {
-                $this->collectedEvents[] = ExiEvent::attribute($attributeName, $attributeValue);
-            }
+            if (!is_null($this->activeCallback)) {
+                $handler = $this->activeCallback;
+                $this->callHandlerWithEvent(ExiEvent::startElement($name), $handler);
 
-            $this->isCollecting = true;
+                foreach ($attributes as $attributeName => $attributeValue) {
+                    $this->callHandlerWithEvent(ExiEvent::attribute($attributeName, $attributeValue), $handler);
+                }
+            }
         }
     }
 
     /**
      * Handles close tag.
      *
-     * @param mixed $_
+     * @param resource|\XMLParser $parser
+     *
+     * @phpstan-ignore class.notFound
      */
-    public function endTag($_, string $name): void
+    public function endTag($parser, string $name): void
     {
-        $path = $this->pathAsString();
-
         if ($this->isCollecting) {
-            $this->collectedEvents[] = ExiEvent::endElement();
-        }
-
-        if ($this->isCollectionPath($path)) {
-            $collectedEvents = $this->collectedEvents;
-
-            $result = $this->callHandlerWithEvents($collectedEvents);
-            if ($result->isFailure()) {
-                $error = $result->unwrapFailure(fn ($_) => new \RuntimeException('BUG, false positive on callback failure'));
-                if ($error instanceof \Throwable) {
-                    throw $error;
-                }
-
-                throw new \RuntimeException('Error: '.(string) $error);
+            if (!is_null($this->activeCallback)) {
+                $handler = $this->activeCallback;
+                $this->callHandlerWithEvent(ExiEvent::endElement(), $handler);
             }
-
-            $this->collectedEvents = [];
         }
-
-        $tail = preg_quote('/'.$name, '/');
-        $pattern = "/{$tail}$/";
-        $path = preg_replace($pattern, '', $path);
-
-        /**
-         * @todo handle the $path errors better
-         */
-        // @phpstan-ignore argument.type
-        $this->setPathFromString($path);
+        if ($this->isCollectionPath($this->pathAsString())) {
+            $this->isCollecting = false;
+            $this->activeCallback = null;
+            $this->collectingFromPath = null;
+        }
+        $this->popNodeFromPath();
     }
 
     /**
      * Handles tag content.
      * handler(XMLParser $parser, string $data): void.
      *
-     * @param mixed $_
+     * @param resource|\XMLParser $parser
+     *
+     * @phpstan-ignore class.notFound
      */
-    public function tagData($_, string $data): void
-    {
-        $this->addData($data);
-    }
-
-    public function addData(string $data): void
+    public function tagData($parser, string $data): void
     {
         if ($this->isCollecting) {
-            $this->collectedEvents[] = ExiEvent::characters($data);
+            if (!is_null($this->activeCallback)) {
+                $handler = $this->activeCallback;
+                $this->callHandlerWithEvent(ExiEvent::characters($data), $handler);
+            }
         }
     }
 
@@ -245,14 +231,21 @@ class ExiParser implements XmlParserInterface, HasHandlers
      */
     public function parseString(string $data, bool $isFinal): IOMonad
     {
-        if (0 == count($this->callbacks)) {
-            // we dont need to do anything, nobody is there to observe
-            // you probably think you are observing, so this should be an error state
-            return IOMonad::fail('No callbacks registered');
-        }
+        // if (0 == count($this->callbacks)) {
+        //     // we dont need to do anything, nobody is there to observe
+        //     // you probably think you are observing, so this should be an error state
+        //     return IOMonad::fail('No callbacks registered');
+        // }
 
-        // @phpstan-ignore argument.type
-        $result = xml_parse($this->parser, $data, $isFinal);
+        try {
+            // @phpstan-ignore argument.type
+            $result = xml_parse($this->parser, $data, $isFinal);
+        } catch (\Throwable $e) {
+            // @phpstan-ignore argument.type
+            xml_parser_free($this->parser);
+
+            return IOMonad::fail($e);
+        }
 
         if ($isFinal) {
             // @phpstan-ignore argument.type
@@ -324,6 +317,16 @@ class ExiParser implements XmlParserInterface, HasHandlers
         return $result;
     }
 
+    private function isCollectionPath(string $path): bool
+    {
+        if (!is_null($this->collectingFromPath)) {
+            return false;
+        }
+
+        return $this->collectingFromPath == $path;
+    }
+
+    // @phpstan-ignore method.unused
     private function hasHandler(string $path): bool
     {
         /**
@@ -340,25 +343,20 @@ class ExiParser implements XmlParserInterface, HasHandlers
 
     private function pathAsString(): string
     {
-        return implode('/', $this->path);
+        // return implode('/', $this->path);
+        return $this->pathString;
     }
 
-    private function setPathFromString(string $path): void
-    {
-        $this->path = explode('/', $path);
-    }
-
-    private function isCollectionPath(string $path): bool
-    {
-        return $this->collectingFrom->match(
-            fn (string $collecingFromPath) => $collecingFromPath == $path,
-            fn () => false,
-        );
-    }
-
-    private function addNodeToPath(string $name): void
+    private function pushNodeToPath(string $name): void
     {
         $this->path[] = $name;
+        $this->pathString = implode('/', $this->path);
+    }
+
+    private function popNodeFromPath(): void
+    {
+        array_pop($this->path);
+        $this->pathString = implode('/', $this->path);
     }
 
     /**
@@ -366,37 +364,23 @@ class ExiParser implements XmlParserInterface, HasHandlers
      */
     private function getHandlerForPath(string $path): Option
     {
-        if ($this->hasHandler($path)) {
-            foreach ($this->callbacks as $hpath => $handler) {
-                if (0 === strpos($path, $hpath)) {
-                    return Option::some($this->callbacks[$hpath]);
-                }
+        foreach ($this->callbacks as $hpath => $handler) {
+            if (0 === strpos($path, $hpath)) {
+                return Option::some($this->callbacks[$hpath]);
             }
-
-            // this should not happen.. the hasHandler has checked already for its existence;
-            return Option::none();
         }
 
+        // this should not happen.. the hasHandler has checked already for its existence;
         return Option::none();
     }
 
     /**
-     * @param array<ExiEvent> $exiEvents
+     * @param callable(ExiEvent):void $handler
      *
-     * @return IOMonad<void,\Throwable>
+     * @throws \Throwable
      */
-    private function callHandlerWithEvents(array $exiEvents): IOMonad
+    private function callHandlerWithEvent(ExiEvent $exiEvent, callable $handler): void
     {
-        $path = $this->pathAsString();
-
-        // only call the callback if we actually have data
-        // @phpstan-ignore return.type
-        return $this->getHandlerForPath($path)->match(
-            function ($handler) use ($exiEvents) {
-                // ignore return value from callback
-                return IOMonad::try(fn () => call_user_func($handler, $exiEvents))->fmap(fn ($_) => null);
-            },
-            fn () => IOMonad::pure(null)
-        );
+        call_user_func($handler, $exiEvent);
     }
 }
