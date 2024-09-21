@@ -14,7 +14,9 @@ use Zodimo\Xml\HandlerRegistrationId;
 use Zodimo\Xml\XmlParserInterface;
 
 /**
- * @phpstan-require-implements XmlParserInterface
+ * @template ERR
+ *
+ * @phpstan-require-implements XmlParserInterface<ERR>
  */
 trait HandlersTrait
 {
@@ -68,12 +70,12 @@ trait HandlersTrait
     }
 
     /**
-     * @template ERR
-     * @template HANDLER of CanRegisterWithXmlParser<ERR>
+     * @template _ERR
+     * @template HANDLER of CanRegisterWithXmlParser<_ERR>
      *
      * @param HANDLER $handler
      *
-     * @return IOMonad<Tuple<HandlerRegistrationId<HANDLER>,XmlParserInterface>,ERR|\RuntimeException>
+     * @return IOMonad<Tuple<HandlerRegistrationId<HANDLER>,XmlParserInterface<ERR>>,_ERR|\RuntimeException>
      */
     public function registerHandler(CanRegisterWithXmlParser $handler): IOMonad
     {

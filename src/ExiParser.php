@@ -6,16 +6,13 @@ namespace Zodimo\Xml;
 
 use Zodimo\BaseReturn\IOMonad;
 use Zodimo\BaseReturn\Option;
+use Zodimo\Xml\EXI\ExiEvent;
 use Zodimo\Xml\Traits\HandlersTrait;
-use Zodimo\Xml\Value\XmlValue;
-use Zodimo\Xml\Value\XmlValueBuilder;
 
 /**
- * Currently broken implementation.
- *
  * @implements XmlParserInterface<\Throwable>
  */
-class SaxParser implements XmlParserInterface, HasHandlers
+class ExiParser implements XmlParserInterface, HasHandlers
 {
     /**
      * @phpstan-use HandlersTrait<\Throwable>
@@ -49,9 +46,9 @@ class SaxParser implements XmlParserInterface, HasHandlers
     private Option $collectingFrom;
 
     /**
-     * @var Option<XmlValueBuilder>
+     * @var array<ExiEvent>
      */
-    private Option $collectedData;
+    private array $collectedEvents;
 
     /**
      * @param resource|\XMLParser $parser
@@ -63,7 +60,7 @@ class SaxParser implements XmlParserInterface, HasHandlers
         $this->parser = $parser;
 
         $this->path = [''];
-        $this->collectedData = Option::none();
+        $this->collectedEvents = [];
         $this->isCollecting = false;
         $this->collectingFrom = Option::none();
     }
@@ -146,6 +143,10 @@ class SaxParser implements XmlParserInterface, HasHandlers
         return IOMonad::pure($this);
     }
 
+    // *****************
+    // INTERNAL HANDLERS.
+    // *****************
+
     /**
      * Handles start tag.
      * start_element_handler(XMLParser $parser, string $name, array $attributes): void.
@@ -161,11 +162,18 @@ class SaxParser implements XmlParserInterface, HasHandlers
 
         if ($this->isCollecting) {
             // just append...
-            $this->collectedData = $this->collectedData->map(fn ($valueBuilder) => $valueBuilder->addChild(XmlValueBuilder::create($name, $attributes)));
+            // $this->collectedEvents = $this->collectedEvents->map(fn ($valueBuilder) => $valueBuilder->addChild(XmlValueBuilder::create($name, $attributes)));
+            $this->collectedEvents[] = ExiEvent::startElement($name);
+            foreach ($attributes as $attributeName => $attributeValue) {
+                $this->collectedEvents[] = ExiEvent::attribute($attributeName, $attributeValue);
+            }
         } elseif ($this->hasHandler($this->pathAsString())) {
             // cannot add addition handlers when already collecting..
             $this->collectingFrom = Option::some($this->pathAsString());
-            $this->collectedData = Option::some(XmlValueBuilder::create($name, $attributes));
+            $this->collectedEvents[] = ExiEvent::startElement($name);
+            foreach ($attributes as $attributeName => $attributeValue) {
+                $this->collectedEvents[] = ExiEvent::attribute($attributeName, $attributeValue);
+            }
 
             $this->isCollecting = true;
         }
@@ -180,25 +188,24 @@ class SaxParser implements XmlParserInterface, HasHandlers
     {
         $path = $this->pathAsString();
 
-        if ($this->isCollectionPath($path)) {
-            // handle the data
-            // reset the data
-            $collectedDataOption = $this->collectedData->match(
-                fn ($builder) => Option::some($builder->build()),
-                fn () => Option::none()
-            );
+        if ($this->isCollecting) {
+            $this->collectedEvents[] = ExiEvent::endElement();
+        }
 
-            $result = $this->callHandlerWithData($collectedDataOption);
+        if ($this->isCollectionPath($path)) {
+            $collectedEvents = $this->collectedEvents;
+
+            $result = $this->callHandlerWithEvents($collectedEvents);
             if ($result->isFailure()) {
                 $error = $result->unwrapFailure(fn ($_) => new \RuntimeException('BUG, false positive on callback failure'));
                 if ($error instanceof \Throwable) {
                     throw $error;
                 }
 
-                throw new \RuntimeException((string) $error);
+                throw new \RuntimeException('Error: '.(string) $error);
             }
 
-            $this->collectedData = Option::none();
+            $this->collectedEvents = [];
         }
 
         $tail = preg_quote('/'.$name, '/');
@@ -226,20 +233,13 @@ class SaxParser implements XmlParserInterface, HasHandlers
     public function addData(string $data): void
     {
         if ($this->isCollecting) {
-            /**
-             * data path..
-             * path /root/user/name
-             * data starts at user.
-             *
-             *  We need something like a lens or a cursor
-             *
-             * IF we have to wonder how we should represent it to not loose data,
-             * we are using the wrong abstractions
-             */
-            $this->collectedData = $this->collectedData->map(fn ($valueBuilder) => $valueBuilder->addValue($data));
+            $this->collectedEvents[] = ExiEvent::characters($data);
         }
     }
 
+    // *************************
+    // END OF INTERNAL HANDLERS.
+    // *************************
     /**
      * @return IOMonad<HasHandlers,mixed>
      */
@@ -381,24 +381,21 @@ class SaxParser implements XmlParserInterface, HasHandlers
     }
 
     /**
-     * @param Option<XmlValue> $dataOption
+     * @param array<ExiEvent> $exiEvents
      *
      * @return IOMonad<void,\Throwable>
      */
-    private function callHandlerWithData(Option $dataOption): IOMonad
+    private function callHandlerWithEvents(array $exiEvents): IOMonad
     {
         $path = $this->pathAsString();
 
         // only call the callback if we actually have data
         // @phpstan-ignore return.type
-        return $dataOption->match(
-            fn ($data) => $this->getHandlerForPath($path)->match(
-                function ($handler) use ($data) {
-                    // ignore return value from callback
-                    return IOMonad::try(fn () => call_user_func($handler, $data))->fmap(fn ($_) => null);
-                },
-                fn () => IOMonad::pure(null)
-            ),
+        return $this->getHandlerForPath($path)->match(
+            function ($handler) use ($exiEvents) {
+                // ignore return value from callback
+                return IOMonad::try(fn () => call_user_func($handler, $exiEvents))->fmap(fn ($_) => null);
+            },
             fn () => IOMonad::pure(null)
         );
     }
