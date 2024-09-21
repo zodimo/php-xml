@@ -60,10 +60,7 @@ class SaxParser implements XmlParserInterface, HasHandlers
         $this->path = [''];
         $this->collectedData = Option::none();
         $this->isCollecting = false;
-        $this->callbacks = [];
         $this->collectingFrom = Option::none();
-        $this->callbackRegistrations = [];
-        $this->handlers = [];
     }
 
     /**
