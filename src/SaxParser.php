@@ -309,7 +309,7 @@ class SaxParser implements XmlParserInterface, HasHandlers
             return $uri;
         };
 
-        $wrappedFile = call_user_func($wrapGzip, $file);
+        $wrappedFile = $wrapGzip($file);
 
         $handle = fopen($wrappedFile, 'r');
         if (!$handle) {
@@ -401,7 +401,7 @@ class SaxParser implements XmlParserInterface, HasHandlers
             fn ($data) => $this->getHandlerForPath($path)->match(
                 function ($handler) use ($data) {
                     // ignore return value from callback
-                    return IOMonad::try(fn () => call_user_func($handler, $data))->fmap(fn ($_) => null);
+                    return IOMonad::try(fn () => $handler($data))->fmap(fn ($_) => null);
                 },
                 fn () => IOMonad::pure(null)
             ),
