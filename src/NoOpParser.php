@@ -203,7 +203,7 @@ class NoOpParser implements XmlParserInterface, HasHandlers
             return $uri;
         };
 
-        $wrappedFile = call_user_func($wrapGzip, $file);
+        $wrappedFile = $wrapGzip($file);
 
         $handle = fopen($wrappedFile, 'r');
         if (!$handle) {
