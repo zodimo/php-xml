@@ -6,6 +6,7 @@ namespace Zodimo\Xml\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
 use Zodimo\BaseReturnTest\MockClosureTrait;
+use Zodimo\Xml\EXI\ExiEvent;
 use Zodimo\Xml\ExiXmlParser;
 
 /**
@@ -30,11 +31,14 @@ class ExiXmlParserTest extends TestCase
         $xmlstring = '<root/>';
         $parserResult = ExiXmlParser::create();
 
-        $expectedEvents = [];
+        $expectedEvents = [
+            ExiEvent::startElement('root'),
+            ExiEvent::endElement(),
+        ];
 
         $collectedEvents = [];
-        $callback = function (array $events) use (&$collectedEvents) {
-            $collectedEvents = $events;
+        $callback = function (ExiEvent $event) use (&$collectedEvents) {
+            $collectedEvents[] = $event;
         };
 
         $this->assertTrue($parserResult->isSuccess());

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Zodimo\Xml\Tests\Unit\Value;
 
 use PHPUnit\Framework\TestCase;
-use Zodimo\BaseReturn\Option;
 use Zodimo\Xml\Value\XmlValueBuilder;
 
 /**
@@ -23,7 +22,7 @@ class XmlValueBuilderTest extends TestCase
         $this->assertEquals([], $builder->getAttributes(), 'attributes');
         $this->assertEquals([], $builder->getCdata(), 'cdata');
         $this->assertEquals([], $builder->getChildren(), 'children');
-        $this->assertEquals(Option::none(), $builder->getValue(), 'value');
+        $this->assertEquals([], $builder->getValues(), 'values');
     }
 
     public function testCanCreateWithAttributes(): void
@@ -33,7 +32,7 @@ class XmlValueBuilderTest extends TestCase
         $this->assertEquals(['name' => 'Joe'], $builder->getAttributes(), 'attributes');
         $this->assertEquals([], $builder->getCdata(), 'cdata');
         $this->assertEquals([], $builder->getChildren(), 'children');
-        $this->assertEquals(Option::none(), $builder->getValue(), 'value');
+        $this->assertEquals([], $builder->getValues(), 'values');
     }
 
     public function testCanAddValue(): void
@@ -44,7 +43,7 @@ class XmlValueBuilderTest extends TestCase
         $this->assertEquals(['name' => 'Joe'], $builder->getAttributes(), 'attributes');
         $this->assertEquals([], $builder->getCdata(), 'cdata');
         $this->assertEquals([], $builder->getChildren(), 'children');
-        $this->assertEquals(Option::some('some-value'), $builder->getValue(), 'value');
+        $this->assertEquals(['some-value'], $builder->getValues(), 'values');
     }
 
     public function testCanAddCdata(): void
@@ -55,7 +54,7 @@ class XmlValueBuilderTest extends TestCase
         $this->assertEquals(['name' => 'Joe'], $builder->getAttributes(), 'attributes');
         $this->assertEquals(['some-cdata'], $builder->getCdata(), 'cdata');
         $this->assertEquals([], $builder->getChildren(), 'children');
-        $this->assertEquals(Option::none(), $builder->getValue(), 'value');
+        $this->assertEquals([], $builder->getValues(), 'values');
     }
 
     public function testCanAddChild(): void
@@ -67,7 +66,7 @@ class XmlValueBuilderTest extends TestCase
         $this->assertEquals(['name' => 'Joe'], $builder->getAttributes(), 'attributes');
         $this->assertEquals([], $builder->getCdata(), 'cdata');
         $this->assertEquals(['user' => [$child]], $builder->getChildren(), 'children');
-        $this->assertEquals(Option::none(), $builder->getValue(), 'value');
+        $this->assertEquals([], $builder->getValues(), 'values');
     }
 
     public function testCanAddChildren(): void
@@ -81,6 +80,6 @@ class XmlValueBuilderTest extends TestCase
         $this->assertEquals(['name' => 'Joe'], $builder->getAttributes(), 'attributes');
         $this->assertEquals([], $builder->getCdata(), 'cdata');
         $this->assertEquals(['user' => [$child1, $child2]], $builder->getChildren(), 'children');
-        $this->assertEquals(Option::none(), $builder->getValue(), 'value');
+        $this->assertEquals([], $builder->getValues(), 'values');
     }
 }
