@@ -6,29 +6,29 @@ namespace Zodimo\Xml\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
 use Zodimo\BaseReturnTest\MockClosureTrait;
-use Zodimo\Xml\ExiParser;
+use Zodimo\Xml\ExiXmlParser;
 
 /**
  * @internal
  *
  * @coversNothing
  */
-class ExiParserTest extends TestCase
+class ExiXmlParserTest extends TestCase
 {
     use MockClosureTrait;
 
     public function testCanCreate(): void
     {
-        $parserResult = ExiParser::create();
+        $parserResult = ExiXmlParser::create();
         $this->assertTrue($parserResult->isSuccess());
         $parser = $parserResult->unwrapSuccess($this->createClosureNotCalled());
-        $this->assertInstanceOf(ExiParser::class, $parser);
+        $this->assertInstanceOf(ExiXmlParser::class, $parser);
     }
 
     public function testCanParseString1(): void
     {
         $xmlstring = '<root/>';
-        $parserResult = ExiParser::create();
+        $parserResult = ExiXmlParser::create();
 
         $expectedEvents = [];
 

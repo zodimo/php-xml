@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace Zodimo\Xml;
 
 use Zodimo\BaseReturn\IOMonad;
-use Zodimo\BaseReturn\Option;
-use Zodimo\Xml\EXI\ExiEvent;
 use Zodimo\Xml\Traits\HandlersTrait;
 
 /**
+ * Currently broken implementation.
+ *
  * @implements XmlParserInterface<\Throwable>
  */
-class ExiParser implements XmlParserInterface, HasHandlers
+class NoOpXmlParser implements XmlParserInterface, HasHandlers
 {
     /**
      * @phpstan-use HandlersTrait<\Throwable>
@@ -34,22 +34,6 @@ class ExiParser implements XmlParserInterface, HasHandlers
     private $readBuffer = 8192;
 
     /**
-     * @var array<string>
-     */
-    private array $path;
-
-    private ?string $collectingFromPath;
-
-    /**
-     * if is it set it means we are collecting.
-     *
-     * @var ?callable(ExiEvent):void
-     */
-    private $activeCallback;
-
-    private string $pathString;
-
-    /**
      * @param resource|\XMLParser $parser
      *
      * @phpstan-ignore class.notFound
@@ -57,12 +41,6 @@ class ExiParser implements XmlParserInterface, HasHandlers
     private function __construct($parser)
     {
         $this->parser = $parser;
-
-        $this->path = [''];
-        $this->pathString = '';
-
-        $this->activeCallback = null;
-        $this->collectingFromPath = null;
     }
 
     /**
@@ -143,107 +121,37 @@ class ExiParser implements XmlParserInterface, HasHandlers
         return IOMonad::pure($this);
     }
 
-    // *****************
-    // INTERNAL HANDLERS.
-    // *****************
-
     /**
      * Handles start tag.
      * start_element_handler(XMLParser $parser, string $name, array $attributes): void.
      *
-     * @param resource|\XMLParser $parser
+     * @param mixed               $_
      * @param array<string,mixed> $attributes
-     *
-     * @phpstan-ignore class.notFound
      */
-    public function startTag($parser, string $name, array $attributes): void
-    {
-        $this->path[] = $name;
-        $this->pathString = implode('/', $this->path);
-
-        if (is_null($this->activeCallback)) {
-            $this->activeCallback = $this->getHandlerForPath($this->pathString)->match(
-                fn (callable $cb) => $cb,
-                fn () => null
-            );
-            if (!is_null($this->activeCallback)) {
-                $this->collectingFromPath = $this->pathString;
-            }
-        }
-
-        if (!is_null($this->activeCallback)) {
-            $handler = $this->activeCallback;
-            $handler(ExiEvent::startElement($name));
-
-            foreach ($attributes as $attributeName => $attributeValue) {
-                $handler(ExiEvent::attribute($attributeName, $attributeValue));
-            }
-        }
-    }
+    public function startTag($_, string $name, array $attributes): void {}
 
     /**
      * Handles close tag.
      *
-     * @param resource|\XMLParser $parser
-     *
-     * @phpstan-ignore class.notFound
+     * @param mixed $_
      */
-    public function endTag($parser, string $name): void
-    {
-        if (!is_null($this->activeCallback)) {
-            $handler = $this->activeCallback;
-            $handler(ExiEvent::endElement());
-        }
-
-        if ($this->isCollectionPath($this->pathString)) {
-            $this->activeCallback = null;
-            $this->collectingFromPath = null;
-        }
-        // $this->popNodeFromPath();
-
-        array_pop($this->path);
-        $this->pathString = implode('/', $this->path);
-    }
+    public function endTag($_, string $name): void {}
 
     /**
      * Handles tag content.
      * handler(XMLParser $parser, string $data): void.
      *
-     * @param resource|\XMLParser $parser
-     *
-     * @phpstan-ignore class.notFound
+     * @param mixed $_
      */
-    public function tagData($parser, string $data): void
-    {
-        if (!is_null($this->activeCallback)) {
-            $handler = $this->activeCallback;
-            $handler(ExiEvent::characters($data));
-        }
-    }
+    public function tagData($_, string $data): void {}
 
-    // *************************
-    // END OF INTERNAL HANDLERS.
-    // *************************
     /**
      * @return IOMonad<HasHandlers,mixed>
      */
     public function parseString(string $data, bool $isFinal): IOMonad
     {
-        // if (0 == count($this->callbacks)) {
-        //     // we dont need to do anything, nobody is there to observe
-        //     // you probably think you are observing, so this should be an error state
-        //     return IOMonad::fail('No callbacks registered');
-        // }
-
-        try {
-            // @phpstan-ignore argument.type
-            $result = xml_parse($this->parser, $data, $isFinal);
-        } catch (\Throwable $e) {
-            // @phpstan-ignore argument.type
-            xml_parser_free($this->parser);
-
-            return IOMonad::fail($e);
-        }
+        // @phpstan-ignore argument.type
+        $result = xml_parse($this->parser, $data, $isFinal);
 
         if ($isFinal) {
             // @phpstan-ignore argument.type
@@ -313,44 +221,5 @@ class ExiParser implements XmlParserInterface, HasHandlers
 
         // @phpstan-ignore return.type
         return $result;
-    }
-
-    private function isCollectionPath(string $path): bool
-    {
-        if (!is_null($this->collectingFromPath)) {
-            return false;
-        }
-
-        return $this->collectingFromPath == $path;
-    }
-
-    // @phpstan-ignore method.unused
-    private function hasHandler(string $path): bool
-    {
-        /**
-         * path / includes /roots.
-         */
-        foreach ($this->callbacks as $hpath => $handler) {
-            if (0 === strpos($path, $hpath)) {
-                return true;
-            }
-        }
-
-        return key_exists($path, $this->callbacks);
-    }
-
-    /**
-     * @return Option<callable>
-     */
-    private function getHandlerForPath(string $path): Option
-    {
-        foreach ($this->callbacks as $hpath => $handler) {
-            if (0 === strpos($path, $hpath)) {
-                return Option::some($this->callbacks[$hpath]);
-            }
-        }
-
-        // this should not happen.. the hasHandler has checked already for its existence;
-        return Option::none();
     }
 }
