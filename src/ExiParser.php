@@ -38,11 +38,11 @@ class ExiParser implements XmlParserInterface, HasHandlers
      */
     private array $path;
 
-    private bool $isCollecting;
-
     private ?string $collectingFromPath;
 
     /**
+     * if is it set it means we are collecting.
+     *
      * @var ?callable(ExiEvent):void
      */
     private $activeCallback;
@@ -60,7 +60,7 @@ class ExiParser implements XmlParserInterface, HasHandlers
 
         $this->path = [''];
         $this->pathString = '';
-        $this->isCollecting = false;
+
         $this->activeCallback = null;
         $this->collectingFromPath = null;
     }
@@ -158,26 +158,25 @@ class ExiParser implements XmlParserInterface, HasHandlers
      */
     public function startTag($parser, string $name, array $attributes): void
     {
-        $this->pushNodeToPath($name);
-        if (!$this->isCollecting) {
-            $this->activeCallback = $this->getHandlerForPath($this->pathAsString())->match(
+        $this->path[] = $name;
+        $this->pathString = implode('/', $this->path);
+
+        if (is_null($this->activeCallback)) {
+            $this->activeCallback = $this->getHandlerForPath($this->pathString)->match(
                 fn (callable $cb) => $cb,
                 fn () => null
             );
             if (!is_null($this->activeCallback)) {
-                $this->isCollecting = true;
-                $this->collectingFromPath = $this->pathAsString();
+                $this->collectingFromPath = $this->pathString;
             }
         }
 
-        if ($this->isCollecting) {
-            if (!is_null($this->activeCallback)) {
-                $handler = $this->activeCallback;
-                $this->callHandlerWithEvent(ExiEvent::startElement($name), $handler);
+        if (!is_null($this->activeCallback)) {
+            $handler = $this->activeCallback;
+            $handler(ExiEvent::startElement($name));
 
-                foreach ($attributes as $attributeName => $attributeValue) {
-                    $this->callHandlerWithEvent(ExiEvent::attribute($attributeName, $attributeValue), $handler);
-                }
+            foreach ($attributes as $attributeName => $attributeValue) {
+                $handler(ExiEvent::attribute($attributeName, $attributeValue));
             }
         }
     }
@@ -191,18 +190,19 @@ class ExiParser implements XmlParserInterface, HasHandlers
      */
     public function endTag($parser, string $name): void
     {
-        if ($this->isCollecting) {
-            if (!is_null($this->activeCallback)) {
-                $handler = $this->activeCallback;
-                $this->callHandlerWithEvent(ExiEvent::endElement(), $handler);
-            }
+        if (!is_null($this->activeCallback)) {
+            $handler = $this->activeCallback;
+            $handler(ExiEvent::endElement());
         }
-        if ($this->isCollectionPath($this->pathAsString())) {
-            $this->isCollecting = false;
+
+        if ($this->isCollectionPath($this->pathString)) {
             $this->activeCallback = null;
             $this->collectingFromPath = null;
         }
-        $this->popNodeFromPath();
+        // $this->popNodeFromPath();
+
+        array_pop($this->path);
+        $this->pathString = implode('/', $this->path);
     }
 
     /**
@@ -215,11 +215,9 @@ class ExiParser implements XmlParserInterface, HasHandlers
      */
     public function tagData($parser, string $data): void
     {
-        if ($this->isCollecting) {
-            if (!is_null($this->activeCallback)) {
-                $handler = $this->activeCallback;
-                $this->callHandlerWithEvent(ExiEvent::characters($data), $handler);
-            }
+        if (!is_null($this->activeCallback)) {
+            $handler = $this->activeCallback;
+            $handler(ExiEvent::characters($data));
         }
     }
 
@@ -296,7 +294,7 @@ class ExiParser implements XmlParserInterface, HasHandlers
             return $uri;
         };
 
-        $wrappedFile = call_user_func($wrapGzip, $file);
+        $wrappedFile = $wrapGzip($file);
 
         $handle = fopen($wrappedFile, 'r');
         if (!$handle) {
@@ -341,24 +339,6 @@ class ExiParser implements XmlParserInterface, HasHandlers
         return key_exists($path, $this->callbacks);
     }
 
-    private function pathAsString(): string
-    {
-        // return implode('/', $this->path);
-        return $this->pathString;
-    }
-
-    private function pushNodeToPath(string $name): void
-    {
-        $this->path[] = $name;
-        $this->pathString = implode('/', $this->path);
-    }
-
-    private function popNodeFromPath(): void
-    {
-        array_pop($this->path);
-        $this->pathString = implode('/', $this->path);
-    }
-
     /**
      * @return Option<callable>
      */
@@ -372,15 +352,5 @@ class ExiParser implements XmlParserInterface, HasHandlers
 
         // this should not happen.. the hasHandler has checked already for its existence;
         return Option::none();
-    }
-
-    /**
-     * @param callable(ExiEvent):void $handler
-     *
-     * @throws \Throwable
-     */
-    private function callHandlerWithEvent(ExiEvent $exiEvent, callable $handler): void
-    {
-        call_user_func($handler, $exiEvent);
     }
 }
