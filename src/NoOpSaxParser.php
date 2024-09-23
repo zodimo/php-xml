@@ -4,15 +4,21 @@ declare(strict_types=1);
 
 namespace Zodimo\Xml;
 
+use Exception;
+use Throwable;
+use XMLParser;
 use Zodimo\BaseReturn\IOMonad;
+use Zodimo\BaseReturn\Option;
 use Zodimo\Xml\Traits\HandlersTrait;
+use Zodimo\Xml\Value\XmlValue;
+use Zodimo\Xml\Value\XmlValueBuilder;
 
 /**
  * Currently broken implementation.
  *
  * @implements XmlParserInterface<\Throwable>
  */
-class NoOpXmlParser implements XmlParserInterface, HasHandlers
+class NoOpSaxParser implements XmlParserInterface, HasHandlers
 {
     /**
      * @phpstan-use HandlersTrait<\Throwable>
@@ -20,7 +26,7 @@ class NoOpXmlParser implements XmlParserInterface, HasHandlers
     use HandlersTrait;
 
     /**
-     * @var resource|\XMLParser
+     * @var resource|XMLParser
      *
      * @phpstan-ignore class.notFound
      */
@@ -34,13 +40,38 @@ class NoOpXmlParser implements XmlParserInterface, HasHandlers
     private $readBuffer = 8192;
 
     /**
-     * @param resource|\XMLParser $parser
+     * @var array<string>
+     */
+    private array $path;
+
+    // @phpstan-ignore property.onlyWritten
+    private bool $isCollecting;
+
+    /**
+     * @var Option<string>
+     */
+    private Option $collectingFrom;
+
+    /**
+     * @var Option<XmlValueBuilder>
+     *
+     * @phpstan-ignore property.onlyWritten
+     */
+    private Option $collectedData;
+
+    /**
+     * @param resource|XMLParser $parser
      *
      * @phpstan-ignore class.notFound
      */
     private function __construct($parser)
     {
         $this->parser = $parser;
+
+        $this->path = [''];
+        $this->collectedData = Option::none();
+        $this->isCollecting = false;
+        $this->collectingFrom = Option::none();
     }
 
     /**
@@ -128,14 +159,20 @@ class NoOpXmlParser implements XmlParserInterface, HasHandlers
      * @param mixed               $_
      * @param array<string,mixed> $attributes
      */
-    public function startTag($_, string $name, array $attributes): void {}
+    public function startTag($_, string $name, array $attributes): void
+    {
+        // no op
+    }
 
     /**
      * Handles close tag.
      *
      * @param mixed $_
      */
-    public function endTag($_, string $name): void {}
+    public function endTag($_, string $name): void
+    {
+        // no op
+    }
 
     /**
      * Handles tag content.
@@ -143,7 +180,10 @@ class NoOpXmlParser implements XmlParserInterface, HasHandlers
      *
      * @param mixed $_
      */
-    public function tagData($_, string $data): void {}
+    public function tagData($_, string $data): void
+    {
+        // no op
+    }
 
     /**
      * @return IOMonad<HasHandlers,mixed>
@@ -206,7 +246,7 @@ class NoOpXmlParser implements XmlParserInterface, HasHandlers
 
         $handle = fopen($wrappedFile, 'r');
         if (!$handle) {
-            return IOMonad::fail(new \Exception('Unable to open file.'));
+            return IOMonad::fail(new Exception('Unable to open file.'));
         }
         $result = IOMonad::pure($this);
         while (!feof($handle) and $result->isSuccess()) {
@@ -221,5 +261,89 @@ class NoOpXmlParser implements XmlParserInterface, HasHandlers
 
         // @phpstan-ignore return.type
         return $result;
+    }
+
+    private function hasHandler(string $path): bool
+    {
+        /**
+         * path / includes /roots.
+         */
+        foreach ($this->callbacks as $hpath => $handler) {
+            if (0 === strpos($path, $hpath)) {
+                return true;
+            }
+        }
+
+        return key_exists($path, $this->callbacks);
+    }
+
+    private function pathAsString(): string
+    {
+        return implode('/', $this->path);
+    }
+
+    // @phpstan-ignore method.unused
+    private function setPathFromString(string $path): void
+    {
+        $this->path = explode('/', $path);
+    }
+
+    // @phpstan-ignore method.unused
+    private function isCollectionPath(string $path): bool
+    {
+        return $this->collectingFrom->match(
+            fn (string $collecingFromPath) => $collecingFromPath == $path,
+            fn () => false,
+        );
+    }
+
+    // @phpstan-ignore method.unused
+    private function addNodeToPath(string $name): void
+    {
+        $this->path[] = $name;
+    }
+
+    /**
+     * @return Option<callable>
+     */
+    private function getHandlerForPath(string $path): Option
+    {
+        if ($this->hasHandler($path)) {
+            foreach ($this->callbacks as $hpath => $handler) {
+                if (0 === strpos($path, $hpath)) {
+                    return Option::some($this->callbacks[$hpath]);
+                }
+            }
+
+            // this should not happen.. the hasHandler has checked already for its existence;
+            return Option::none();
+        }
+
+        return Option::none();
+    }
+
+    /**
+     * @param Option<XmlValue> $dataOption
+     *
+     * @return IOMonad<void,Throwable>
+     *
+     * @phpstan-ignore method.unused
+     */
+    private function callHandlerWithData(Option $dataOption): IOMonad
+    {
+        $path = $this->pathAsString();
+
+        // only call the callback if we actually have data
+        // @phpstan-ignore return.type
+        return $dataOption->match(
+            fn ($data) => $this->getHandlerForPath($path)->match(
+                function ($handler) use ($data) {
+                    // ignore return value from callback
+                    return IOMonad::try(fn () => $handler($data))->fmap(fn ($_) => null);
+                },
+                fn () => IOMonad::pure(null)
+            ),
+            fn () => IOMonad::pure(null)
+        );
     }
 }

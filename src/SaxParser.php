@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Zodimo\Xml;
 
+use Exception;
+use RuntimeException;
+use Throwable;
+use XMLParser;
 use Zodimo\BaseReturn\IOMonad;
 use Zodimo\BaseReturn\Option;
 use Zodimo\Xml\Traits\HandlersTrait;
@@ -23,7 +27,7 @@ class SaxParser implements XmlParserInterface, HasHandlers
     use HandlersTrait;
 
     /**
-     * @var resource|\XMLParser
+     * @var resource|XMLParser
      *
      * @phpstan-ignore class.notFound
      */
@@ -54,7 +58,7 @@ class SaxParser implements XmlParserInterface, HasHandlers
     private Option $collectedData;
 
     /**
-     * @param resource|\XMLParser $parser
+     * @param resource|XMLParser $parser
      *
      * @phpstan-ignore class.notFound
      */
@@ -192,12 +196,12 @@ class SaxParser implements XmlParserInterface, HasHandlers
 
             $result = $this->callHandlerWithData($collectedDataOption);
             if ($result->isFailure()) {
-                $error = $result->unwrapFailure(fn ($_) => new \RuntimeException('BUG, false positive on callback failure'));
-                if ($error instanceof \Throwable) {
+                $error = $result->unwrapFailure(fn ($_) => new RuntimeException('BUG, false positive on callback failure'));
+                if ($error instanceof Throwable) {
                     throw $error;
                 }
 
-                throw new \RuntimeException((string) $error);
+                throw new RuntimeException((string) $error);
             }
             $this->isCollecting = false;
             $this->collectingFrom = Option::none();
@@ -313,7 +317,7 @@ class SaxParser implements XmlParserInterface, HasHandlers
 
         $handle = fopen($wrappedFile, 'r');
         if (!$handle) {
-            return IOMonad::fail(new \Exception('Unable to open file.'));
+            return IOMonad::fail(new Exception('Unable to open file.'));
         }
         $result = IOMonad::pure($this);
         while (!feof($handle) and $result->isSuccess()) {
@@ -389,7 +393,7 @@ class SaxParser implements XmlParserInterface, HasHandlers
     /**
      * @param Option<XmlValue> $dataOption
      *
-     * @return IOMonad<void,\Throwable>
+     * @return IOMonad<void,Throwable>
      */
     private function callHandlerWithData(Option $dataOption): IOMonad
     {
