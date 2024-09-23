@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Zodimo\Xml;
 
+use Exception;
+use Throwable;
+use XMLParser;
 use Zodimo\BaseReturn\IOMonad;
 use Zodimo\BaseReturn\Option;
 use Zodimo\Xml\EXI\ExiEvent;
@@ -20,7 +23,7 @@ class ExiXmlParser implements XmlParserInterface, HasHandlers
     use HandlersTrait;
 
     /**
-     * @var resource|\XMLParser
+     * @var resource|XMLParser
      *
      * @phpstan-ignore class.notFound
      */
@@ -50,7 +53,7 @@ class ExiXmlParser implements XmlParserInterface, HasHandlers
     private string $pathString;
 
     /**
-     * @param resource|\XMLParser $parser
+     * @param resource|XMLParser $parser
      *
      * @phpstan-ignore class.notFound
      */
@@ -151,7 +154,7 @@ class ExiXmlParser implements XmlParserInterface, HasHandlers
      * Handles start tag.
      * start_element_handler(XMLParser $parser, string $name, array $attributes): void.
      *
-     * @param resource|\XMLParser $parser
+     * @param resource|XMLParser  $parser
      * @param array<string,mixed> $attributes
      *
      * @phpstan-ignore class.notFound
@@ -184,7 +187,7 @@ class ExiXmlParser implements XmlParserInterface, HasHandlers
     /**
      * Handles close tag.
      *
-     * @param resource|\XMLParser $parser
+     * @param resource|XMLParser $parser
      *
      * @phpstan-ignore class.notFound
      */
@@ -209,7 +212,7 @@ class ExiXmlParser implements XmlParserInterface, HasHandlers
      * Handles tag content.
      * handler(XMLParser $parser, string $data): void.
      *
-     * @param resource|\XMLParser $parser
+     * @param resource|XMLParser $parser
      *
      * @phpstan-ignore class.notFound
      */
@@ -238,7 +241,7 @@ class ExiXmlParser implements XmlParserInterface, HasHandlers
         try {
             // @phpstan-ignore argument.type
             $result = xml_parse($this->parser, $data, $isFinal);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             // @phpstan-ignore argument.type
             xml_parser_free($this->parser);
 
@@ -298,7 +301,7 @@ class ExiXmlParser implements XmlParserInterface, HasHandlers
 
         $handle = fopen($wrappedFile, 'r');
         if (!$handle) {
-            return IOMonad::fail(new \Exception('Unable to open file.'));
+            return IOMonad::fail(new Exception('Unable to open file.'));
         }
         $result = IOMonad::pure($this);
         while (!feof($handle) and $result->isSuccess()) {
