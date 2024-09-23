@@ -9,7 +9,8 @@ use Throwable;
 use XMLParser;
 use Zodimo\BaseReturn\IOMonad;
 use Zodimo\BaseReturn\Option;
-use Zodimo\Xml\Traits\HandlersTrait;
+use Zodimo\Xml\Traits\CallbackInfrastructure;
+use Zodimo\Xml\Traits\HandlerInfrastructure;
 use Zodimo\Xml\Value\XmlValue;
 use Zodimo\Xml\Value\XmlValueBuilder;
 
@@ -21,9 +22,14 @@ use Zodimo\Xml\Value\XmlValueBuilder;
 class NoOpSaxParser implements XmlParserInterface, HasHandlers
 {
     /**
-     * @phpstan-use HandlersTrait<\Throwable>
+     * @phpstan-use HandlerInfrastructure<\Throwable>
      */
-    use HandlersTrait;
+    use HandlerInfrastructure;
+
+    /**
+     * @phpstan-use CallbackInfrastructure<\Throwable>
+     */
+    use CallbackInfrastructure;
 
     /**
      * @var resource|XMLParser

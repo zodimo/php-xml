@@ -10,7 +10,8 @@ use XMLParser;
 use Zodimo\BaseReturn\IOMonad;
 use Zodimo\BaseReturn\Option;
 use Zodimo\Xml\EXI\ExiEvent;
-use Zodimo\Xml\Traits\HandlersTrait;
+use Zodimo\Xml\Traits\CallbackInfrastructure;
+use Zodimo\Xml\Traits\HandlerInfrastructure;
 
 /**
  * @implements XmlParserInterface<\Throwable>
@@ -18,9 +19,14 @@ use Zodimo\Xml\Traits\HandlersTrait;
 class ExiXmlParser implements XmlParserInterface, HasHandlers
 {
     /**
-     * @phpstan-use HandlersTrait<\Throwable>
+     * @phpstan-use HandlerInfrastructure<\Throwable>
      */
-    use HandlersTrait;
+    use HandlerInfrastructure;
+
+    /**
+     * @phpstan-use CallbackInfrastructure<\Throwable>
+     */
+    use CallbackInfrastructure;
 
     /**
      * @var resource|XMLParser
