@@ -8,14 +8,20 @@ class CallbackRegistration
 {
     private string $path;
 
-    public function __construct(string $path)
+    /**
+     * @var callable
+     */
+    private $callback;
+
+    public function __construct(string $path, callable $callback)
     {
         $this->path = $path;
+        $this->callback = $callback;
     }
 
-    public static function create(string $path): CallbackRegistration
+    public static function create(string $path, callable $callback): CallbackRegistration
     {
-        return new self($path);
+        return new self($path, $callback);
     }
 
     public function getPath(): string
@@ -26,5 +32,10 @@ class CallbackRegistration
     public function asIdString(): string
     {
         return $this->getPath();
+    }
+
+    public function getCallback(): callable
+    {
+        return $this->callback;
     }
 }

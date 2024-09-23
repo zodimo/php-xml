@@ -29,7 +29,6 @@ class ExiXmlParserTest extends TestCase
     public function testCanParseString1(): void
     {
         $xmlstring = '<root/>';
-        $parserResult = ExiXmlParser::create();
 
         $expectedEvents = [
             ExiEvent::startElement('root'),
@@ -40,11 +39,13 @@ class ExiXmlParserTest extends TestCase
         $callback = function (ExiEvent $event) use (&$collectedEvents) {
             $collectedEvents[] = $event;
         };
-
+        $parserResult = ExiXmlParser::create()
+            ->flatMap(fn ($p) => $p->registerCallback('/', $callback))
+        ;
         $this->assertTrue($parserResult->isSuccess());
-        $parser = $parserResult->unwrapSuccess($this->createClosureNotCalled());
-        $parser->registerCallback('/', $callback);
-        $result = $parser->parseString($xmlstring, true);
+        $resultTuple = $parserResult->unwrapSuccess($this->createClosureNotCalled());
+
+        $result = $resultTuple->snd()->parseString($xmlstring, true);
         $this->assertTrue($result->isSuccess());
 
         $this->assertEquals($expectedEvents, $collectedEvents);

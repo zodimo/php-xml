@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Zodimo\Xml\Traits;
 
-use RuntimeException;
 use Zodimo\BaseReturn\IOMonad;
 use Zodimo\BaseReturn\Option;
 use Zodimo\BaseReturn\Tuple;
 use Zodimo\Xml\CanRegisterWithXmlParser;
+use Zodimo\Xml\Errors\XmlParserException;
 use Zodimo\Xml\HandlerRegistration;
 use Zodimo\Xml\HandlerRegistrationId;
 use Zodimo\Xml\XmlParserInterface;
@@ -31,7 +31,7 @@ trait HandlerInfrastructure
      *
      * @param HANDLER $handler
      *
-     * @return IOMonad<Tuple<HandlerRegistrationId<HANDLER>,XmlParserInterface<ERR>>,_ERR|RuntimeException>
+     * @return IOMonad<Tuple<HandlerRegistrationId<HANDLER>,XmlParserInterface<ERR>>,_ERR|XmlParserException>
      */
     public function registerHandler(CanRegisterWithXmlParser $handler): IOMonad
     {
@@ -45,11 +45,11 @@ trait HandlerInfrastructure
                 $parser = $input->snd();
 
                 if (!$handlerRegistration instanceof HandlerRegistration) {
-                    return IOMonad::fail(new RuntimeException('Expected HandlerRegistration in Tuple::FIRST'));
+                    return IOMonad::fail(XmlParserException::create('Expected HandlerRegistration in Tuple::FIRST'));
                 }
 
                 if (!$parser instanceof XmlParserInterface) {
-                    return IOMonad::fail(new RuntimeException('Expected XmlParserInterface in Tuple::SECOND'));
+                    return IOMonad::fail(XmlParserException::create('Expected XmlParserInterface in Tuple::SECOND'));
                 }
 
                 return $parser
@@ -63,20 +63,16 @@ trait HandlerInfrastructure
     }
 
     /**
-     * If handler not found, then just return the parser unchanged.
-     * or should it ?
-     *
      * @template HANDLER
      *
      * @param HandlerRegistrationId<HANDLER> $handlerRegistrationId
      *
-     * @return IOMonad<XmlParserInterface,mixed>
+     * @return IOMonad<XmlParserInterface,XmlParserException>
      */
     public function unRegisterHandlerByRegisterationId(HandlerRegistrationId $handlerRegistrationId): IOMonad
     {
-        $parser = $this;
+        $parser = clone $this;
 
-        // @phpstan-ignore return.type
         return $this->getHandlerRegistrationById($handlerRegistrationId)->match(
             function ($registration) use ($parser, $handlerRegistrationId) {
                 $parserResult = IOMonad::pure($parser);
@@ -88,7 +84,9 @@ trait HandlerInfrastructure
                     return $parser->removeHandlerById($handlerRegistrationId);
                 });
             },
-            fn () => IOMonad::pure($this)
+            fn () => IOMonad::fail(
+                XmlParserException::create('Handler does not exist')
+            )
         );
     }
 
@@ -115,17 +113,19 @@ trait HandlerInfrastructure
      *
      * @param HandlerRegistration<HANDLER> $handlerRegistration
      *
-     * @return IOMonad<XmlParserInterface,mixed>
+     * @return IOMonad<XmlParserInterface,XmlParserException>
      */
     public function addHandlerRegistration(HandlerRegistration $handlerRegistration): IOMonad
     {
         $handlerIdAsString = $handlerRegistration->getRegistrationId()->getId();
         if (isset($this->handlers[$handlerIdAsString])) {
-            return IOMonad::fail('Handler already registered');
+            return IOMonad::fail(XmlParserException::create('Handler already registered'));
         }
-        $this->handlers[$handlerIdAsString] = $handlerRegistration;
+        $clone = clone $this;
 
-        return IOMonad::pure($this);
+        $clone->handlers[$handlerIdAsString] = $handlerRegistration;
+
+        return IOMonad::pure($clone);
     }
 
     /**
@@ -133,16 +133,17 @@ trait HandlerInfrastructure
      *
      * @param HandlerRegistrationId<HANDLER> $id
      *
-     * @return IOMonad<XmlParserInterface,mixed>
+     * @return IOMonad<XmlParserInterface,XmlParserException>
      */
     public function removeHandlerById(HandlerRegistrationId $id): IOMonad
     {
         $handlerIdAsString = $id->getId();
         if (!isset($this->handlers[$handlerIdAsString])) {
-            return IOMonad::fail('Handler with id does not exists');
+            return IOMonad::fail(XmlParserException::create('Handler with id does not exists'));
         }
-        unset($this->handlers[$handlerIdAsString]);
+        $clone = clone $this;
+        unset($clone->handlers[$handlerIdAsString]);
 
-        return IOMonad::pure($this);
+        return IOMonad::pure($clone);
     }
 }

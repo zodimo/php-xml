@@ -84,21 +84,10 @@ class SaxParser implements XmlParserInterface, HasHandlers
     public static function create(): IOMonad
     {
         $mParser = new self(xml_parser_create('UTF-8'));
-        $mParserResult = $mParser->setOption(XML_OPTION_CASE_FOLDING, 0)
+
+        return $mParser->setOption(XML_OPTION_CASE_FOLDING, 0)
             ->flatMap(fn ($sparser) => $sparser->setOption(XML_OPTION_SKIP_WHITE, 1))
         ;
-
-        // @phpstan-ignore argument.type
-        xml_set_object($mParser->parser, $mParser);
-
-        // @phpstan-ignore argument.type
-        xml_set_element_handler($mParser->parser, [$mParser, 'startTag'], [$mParser, 'endTag']);
-        // @phpstan-ignore argument.type
-        xml_set_character_data_handler($mParser->parser, [$mParser, 'tagData']);
-
-        // xml_set_external_entity_ref_handler($this->parser, 'convertEntities');
-
-        return $mParserResult;
     }
 
     /**
@@ -267,6 +256,19 @@ class SaxParser implements XmlParserInterface, HasHandlers
             return IOMonad::fail('No callbacks registered');
         }
 
+        /**
+         * We configure this here because of imutabilty during callback and handler processing.
+         */
+
+        // @phpstan-ignore argument.type
+        xml_set_object($this->parser, $this);
+        // @phpstan-ignore argument.type
+        xml_set_element_handler($this->parser, [$this, 'startTag'], [$this, 'endTag']);
+        // @phpstan-ignore argument.type
+        xml_set_character_data_handler($this->parser, [$this, 'tagData']);
+
+        // xml_set_external_entity_ref_handler($this->parser, 'convertEntities');
+
         // @phpstan-ignore argument.type
         $result = xml_parse($this->parser, $data, $isFinal);
 
@@ -383,9 +385,9 @@ class SaxParser implements XmlParserInterface, HasHandlers
     private function getHandlerForPath(string $path): Option
     {
         if ($this->hasHandler($path)) {
-            foreach ($this->callbacks as $hpath => $handler) {
+            foreach ($this->callbacks as $hpath => $callbackRegistrationId) {
                 if (0 === strpos($path, $hpath)) {
-                    return Option::some($this->callbacks[$hpath]);
+                    return Option::some($this->callbackRegistrations[$callbackRegistrationId]->getCallback());
                 }
             }
 

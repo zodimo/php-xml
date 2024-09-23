@@ -32,11 +32,12 @@ class SaxParserTest extends TestCase
             ++$counter;
         };
         $filePath = __DIR__.'/../Resources/1k.xml';
-        $parserResult = SaxParser::create();
+        $parserResult = SaxParser::create()
+            ->flatMap(fn ($p) => $p->registerCallback('/root/user', $counterCallback))
+        ;
         $this->assertTrue($parserResult->isSuccess());
-        $parser = $parserResult->unwrapSuccess($this->createClosureNotCalled());
-        $parser->registerCallback('/root/user', $counterCallback);
-        $result = $parser->parseFile($filePath);
+        $resultTuple = $parserResult->unwrapSuccess($this->createClosureNotCalled());
+        $result = $resultTuple->snd()->parseFile($filePath);
         $this->assertTrue($result->isSuccess());
         $this->assertEquals(1000, $counter);
     }
@@ -48,11 +49,12 @@ class SaxParserTest extends TestCase
             ++$counter;
         };
         $filePath = __DIR__.'/../Resources/1k.xml.gz';
-        $parserResult = SaxParser::create();
+        $parserResult = SaxParser::create()
+            ->flatMap(fn ($p) => $p->registerCallback('/root/user', $counterCallback))
+        ;
         $this->assertTrue($parserResult->isSuccess());
-        $parser = $parserResult->unwrapSuccess($this->createClosureNotCalled());
-        $parser->registerCallback('/root/user', $counterCallback);
-        $result = $parser->parseFile($filePath);
+        $resultTuple = $parserResult->unwrapSuccess($this->createClosureNotCalled());
+        $result = $resultTuple->snd()->parseFile($filePath);
         $this->assertTrue($result->isSuccess());
         $this->assertEquals(1000, $counter);
     }

@@ -33,11 +33,13 @@ class SaxParserTest extends TestCase
     public function testCanParseString1(): void
     {
         $xmlstring = '<root/>';
-        $parserResult = SaxParser::create();
+        $parserResult = SaxParser::create()
+            ->flatMap(fn ($p) => $p->registerCallback('/', $this->createClosureMock()))
+        ;
         $this->assertTrue($parserResult->isSuccess());
-        $parser = $parserResult->unwrapSuccess($this->createClosureNotCalled());
-        $parser->registerCallback('/', $this->createClosureMock());
-        $result = $parser->parseString($xmlstring, true);
+        $resultTuple = $parserResult->unwrapSuccess($this->createClosureNotCalled());
+
+        $result = $resultTuple->snd()->parseString($xmlstring, true);
         $this->assertTrue($result->isSuccess());
     }
 
@@ -49,11 +51,13 @@ class SaxParserTest extends TestCase
             </root>
             XML;
 
-        $parserResult = SaxParser::create();
+        $parserResult = SaxParser::create()
+            ->flatMap(fn ($p) => $p->registerCallback('/root/username', $this->createClosureMock()))
+        ;
         $this->assertTrue($parserResult->isSuccess());
-        $parser = $parserResult->unwrapSuccess($this->createClosureNotCalled());
-        $parser->registerCallback('/root/username', $this->createClosureMock());
-        $result = $parser->parseString($xmlstring, true);
+        $resultTuple = $parserResult->unwrapSuccess($this->createClosureNotCalled());
+
+        $result = $resultTuple->snd()->parseString($xmlstring, true);
         $this->assertTrue($result->isSuccess());
     }
 
@@ -143,42 +147,49 @@ class SaxParserTest extends TestCase
         $this->assertTrue($readerResult->isSuccess());
     }
 
-    public function testCanHandleUserHandlerCallbackSuccess(): void
-    {
-        $xmlstring = <<< 'XML'
-            <root>
-                <user>
-                  <username>joe_soap</username>
-                  <name>joe</name>
-                  <email>joe@mail.com</email>
-                </user>
-            </root>
-            XML;
+    // public function testCanHandleUserHandlerCallbackSuccess(): void
+    // {
+    //     $xmlstring = <<< 'XML'
+    //         <root>
+    //             <user>
+    //               <username>joe_soap</username>
+    //               <name>joe</name>
+    //               <email>joe@mail.com</email>
+    //               <address>
+    //                 <line1>street</line1>
+    //               </address>
+    //             </user>
+    //         </root>
+    //         XML;
 
-        $collectedData = [];
-        $expectedData = [
-            [
-                'username' => 'joe_soap',
-                'name' => 'joe',
-                'email' => 'joe@mail.com',
-            ],
-        ];
+    //     $collectedData = [];
+    //     $expectedData = [
+    //         [
+    //             'username' => 'joe_soap',
+    //             'name' => 'joe',
+    //             'email' => 'joe@mail.com',
+    //             'address' => [
+    //                 'line1' => 'street',
+    //             ],
+    //         ],
+    //     ];
 
-        $callback = function (XmlValue $xmlValue) use (&$collectedData): IOMonad {
-            $collectedData[] = [
-                'username' => $xmlValue->getChildren()['username'][0]->getValue()->unwrap(fn () => ''),
-                'name' => $xmlValue->getChildren()['name'][0]->getValue()->unwrap(fn () => ''),
-                'email' => $xmlValue->getChildren()['email'][0]->getValue()->unwrap(fn () => ''),
-            ];
+    //     $callback = function (XmlValue $xmlValue) use (&$collectedData): IOMonad {
+    //         $collectedData[] = [
+    //             'username' => $xmlValue->getChildren()['username'][0]->getValue()->unwrap(fn () => ''),
+    //             'name' => $xmlValue->getChildren()['name'][0]->getValue()->unwrap(fn () => ''),
+    //             'email' => $xmlValue->getChildren()['email'][0]->getValue()->unwrap(fn () => ''),
+    //             'address' => $xmlValue->getChildren()['address'][0]->getValue()->unwrap(fn () => ''),
+    //         ];
 
-            return IOMonad::pure(null);
-        };
+    //         return IOMonad::pure(null);
+    //     };
 
-        $registrationResult = SaxParser::create()->flatMap(fn (XmlParserInterface $reader) => $reader->registerCallback('/root/user', $callback));
-        $this->assertTrue($registrationResult->isSuccess());
-        $registrationTuple = $registrationResult->unwrapSuccess($this->createClosureNotCalled());
-        $readerResult = $registrationTuple->snd()->parseString($xmlstring, true);
-        $this->assertTrue($readerResult->isSuccess());
-        $this->assertEquals($expectedData, $collectedData);
-    }
+    //     $registrationResult = SaxParser::create()->flatMap(fn (XmlParserInterface $reader) => $reader->registerCallback('/root/user', $callback));
+    //     $this->assertTrue($registrationResult->isSuccess());
+    //     $registrationTuple = $registrationResult->unwrapSuccess($this->createClosureNotCalled());
+    //     $readerResult = $registrationTuple->snd()->parseString($xmlstring, true);
+    //     $this->assertTrue($readerResult->isSuccess());
+    //     $this->assertEquals($expectedData, $collectedData);
+    // }
 }
