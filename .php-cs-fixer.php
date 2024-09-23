@@ -16,6 +16,7 @@ return (new Config())
     ->setRules([
         '@PhpCsFixer' => true,
         '@PHP74Migration' => true,
+        '@PHP80Migration' => true,
         'header_comment' => [
             'comment_type' => 'PHPDoc',
             'header' => $header,
@@ -25,6 +26,11 @@ return (new Config())
         'strict_param' => true,
         'declare_strict_types' => true,
         'phpdoc_to_comment' => false,
+        'global_namespace_import' => [
+            'import_classes' => true,
+            'import_constants' => true,
+            'import_functions' => true,
+        ],
     ])
     ->setFinder($finder)
 ;
