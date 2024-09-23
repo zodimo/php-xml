@@ -17,7 +17,7 @@ interface CanRegisterWithXmlParser
      *
      * @param XmlParserInterface<PARSERERR> $parser
      *
-     * @return IOMonad<Tuple<HandlerRegistration<self<ERR>>,XmlParserInterface<ERR|PARSERERR>>,ERR>
+     * @return IOMonad<Tuple<HandlerRegistration<self<ERR>>,XmlParserInterface<ERR|PARSERERR>>,PARSERERR>
      */
     public function registerWithParser(XmlParserInterface $parser): IOMonad;
 }
