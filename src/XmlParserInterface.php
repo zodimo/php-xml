@@ -7,6 +7,8 @@ namespace Zodimo\Xml;
 use Zodimo\BaseReturn\IOMonad;
 use Zodimo\BaseReturn\Option;
 use Zodimo\BaseReturn\Tuple;
+use Zodimo\Xml\Errors\XmlParserException;
+use Zodimo\Xml\Errors\XmlParsingException;
 
 /**
  * @template HANDLERERR
@@ -31,33 +33,21 @@ interface XmlParserInterface
      *
      * @param HandlerRegistrationId<HANDLER> $handlerRegistrationId
      *
-     * @return IOMonad<XmlParserInterface<HANDLERERR>,mixed>
+     * @return IOMonad<XmlParserInterface<HANDLERERR>,XmlParserException>
      */
     public function unRegisterHandlerByRegisterationId(HandlerRegistrationId $handlerRegistrationId): IOMonad;
 
     /**
-     * @return IOMonad<Tuple<CallbackRegistration,XmlParserInterface<HANDLERERR>>,string>
+     * @return IOMonad<Tuple<CallbackRegistration,XmlParserInterface<HANDLERERR>>,XmlParserException>
      */
     public function registerCallback(string $path, callable $callback): IOMonad;
 
     /**
      * Remove node callback.
      *
-     * @return IOMonad<SaxParser,string>
+     * @return IOMonad<XmlParserInterface<HANDLERERR>,XmlParserException>
      */
     public function unRegisterCallback(CallbackRegistration $callbackRegistration): IOMonad;
-
-    /**
-     * Support xml and xml.gz.
-     *
-     * @return IOMonad<HasHandlers,mixed>
-     */
-    public function parseFile(string $file): IOMonad;
-
-    /**
-     * @return IOMonad<HasHandlers,mixed>
-     */
-    public function parseString(string $data, bool $isFinal): IOMonad;
 
     /**
      * @template HANDLER
@@ -74,17 +64,29 @@ interface XmlParserInterface
      *
      * @param HandlerRegistration<HANDLER> $handlerRegistration
      *
-     * @return IOMonad<XmlParserInterface<ERR>,mixed>
+     * @return IOMonad<XmlParserInterface<ERR>,XmlParserException>
      */
     public function addHandlerRegistration(HandlerRegistration $handlerRegistration): IOMonad;
 
     /**
-     * @template ERR of \Throwable
+     * @template ERR
      * @template HANDLER of CanRegisterWithXmlParser<ERR>
      *
      * @param HandlerRegistrationId<HANDLER> $id
      *
-     * @return IOMonad<XmlParserInterface<ERR>,mixed>
+     * @return IOMonad<XmlParserInterface<ERR>,XmlParserException>
      */
     public function removeHandlerById(HandlerRegistrationId $id): IOMonad;
+
+    /**
+     * Support xml and xml.gz.
+     *
+     * @return IOMonad<HasHandlers,XmlParsingException>
+     */
+    public function parseFile(string $file): IOMonad;
+
+    /**
+     * @return IOMonad<HasHandlers,XmlParsingException>
+     */
+    public function parseString(string $data, bool $isFinal): IOMonad;
 }
