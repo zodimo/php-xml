@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Zodimo\Xml\Tests\Integration;
 
-use PHPUnit\Framework\TestCase;
 use Zodimo\Xml\ExiXmlParser;
 
 /**
@@ -12,7 +11,7 @@ use Zodimo\Xml\ExiXmlParser;
  *
  * @coversNothing
  */
-class ExiXmlParserBench extends TestCase
+class ExiXmlParserBench
 {
     public function getCallback(): callable
     {
