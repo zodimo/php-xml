@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Zodimo\Xml\Traits;
 
+use RuntimeException;
 use Zodimo\BaseReturn\IOMonad;
 use Zodimo\BaseReturn\Option;
 use Zodimo\BaseReturn\Tuple;
-use Zodimo\Xml\CallbackRegistration;
 use Zodimo\Xml\CanRegisterWithXmlParser;
 use Zodimo\Xml\HandlerRegistration;
 use Zodimo\Xml\HandlerRegistrationId;
@@ -18,56 +18,12 @@ use Zodimo\Xml\XmlParserInterface;
  *
  * @phpstan-require-implements XmlParserInterface<ERR>
  */
-trait HandlersTrait
+trait HandlerInfrastructure
 {
-    /**
-     * @var array<string,callable>
-     */
-    protected array $callbacks = [];
-
-    /**
-     * @var array<string>
-     */
-    protected array $callbackRegistration = [];
-
     /**
      * @var array<string,HandlerRegistration>
      */
     protected array $handlers = [];
-
-    /**
-     * @return IOMonad<Tuple<CallbackRegistration,XmlParserInterface>,string>
-     */
-    public function registerCallback(string $path, callable $callback): IOMonad
-    {
-        if ($this->hasHandler($path)) {
-            return IOMonad::fail("Callback on path[{$path}] already exists");
-        }
-
-        $this->callbacks[$path] = $callback;
-        $callbackRegistration = CallbackRegistration::create($path);
-        $this->callbackRegistrations[] = $callbackRegistration->asIdString();
-
-        // @phpstan-ignore return.type
-        return IOMonad::pure(Tuple::create($callbackRegistration, $this));
-    }
-
-    /**
-     * Remove node callback.
-     *
-     * @return IOMonad<XmlParserInterface,string>
-     */
-    public function unRegisterCallback(CallbackRegistration $callbackRegistration): IOMonad
-    {
-        $path = $callbackRegistration->getPath();
-        if (!in_array($callbackRegistration->asIdString(), $this->callbackRegistrations, true)) {
-            return IOMonad::fail("Callback for path: {$path} does not exist.");
-        }
-        unset($this->callbackRegistrations[$callbackRegistration->asIdString()], $this->callbacks[$path]);
-
-        // @phpstan-ignore return.type
-        return IOMonad::pure($this);
-    }
 
     /**
      * @template _ERR
@@ -75,7 +31,7 @@ trait HandlersTrait
      *
      * @param HANDLER $handler
      *
-     * @return IOMonad<Tuple<HandlerRegistrationId<HANDLER>,XmlParserInterface<ERR>>,_ERR|\RuntimeException>
+     * @return IOMonad<Tuple<HandlerRegistrationId<HANDLER>,XmlParserInterface<ERR>>,_ERR|RuntimeException>
      */
     public function registerHandler(CanRegisterWithXmlParser $handler): IOMonad
     {
@@ -89,11 +45,11 @@ trait HandlersTrait
                 $parser = $input->snd();
 
                 if (!$handlerRegistration instanceof HandlerRegistration) {
-                    return IOMonad::fail(new \RuntimeException('Expected HandlerRegistration in Tuple::FIRST'));
+                    return IOMonad::fail(new RuntimeException('Expected HandlerRegistration in Tuple::FIRST'));
                 }
 
                 if (!$parser instanceof XmlParserInterface) {
-                    return IOMonad::fail(new \RuntimeException('Expected XmlParserInterface in Tuple::SECOND'));
+                    return IOMonad::fail(new RuntimeException('Expected XmlParserInterface in Tuple::SECOND'));
                 }
 
                 return $parser
