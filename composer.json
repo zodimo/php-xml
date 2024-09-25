@@ -1,6 +1,6 @@
 {
   "name": "zodimo/xml",
-  "description": "Basic types that communicates the possibility of failure and optional values.",
+  "description": "php xml parsers",
   "type": "library",
   "license": "mit",
   "autoload": {
@@ -21,15 +21,21 @@
   ],
   "require": {
     "php": "~7.4|~8",
-    "zodimo/base-return":"^0"
+    "zodimo/base-return": "^0",
+    "webmozart/assert": "^1.11"
   },
   "require-dev": {
     "phpunit/phpunit": "^9.6",
     "phpstan/phpstan": "^1.11",
     "friendsofphp/php-cs-fixer": "^3.62",
-    "zodimo/base-return-test": "^0"
+    "zodimo/base-return-test": "^0",
+    "phpbench/phpbench": "^1.2"
   },
   "scripts": {
+    "bench": [
+      "Composer\\Config::disableProcessTimeout",
+      "php ./vendor/bin/phpbench run tests/Benchmark/"
+    ],
     "test": [
       "Composer\\Config::disableProcessTimeout",
       "php ./vendor/bin/phpunit"
