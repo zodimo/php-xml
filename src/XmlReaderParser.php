@@ -275,11 +275,9 @@ class XmlReaderParser implements XmlParserInterface, RegisterListenerInterface, 
     /**
      * Expand current node to string.
      *
-     * @return string
-     *
      * @throws XmlParsingException
      */
-    public function expandString(string $version = '1.0', string $encoding = 'UTF-8')
+    public function expandString(string $version = '1.0', string $encoding = 'UTF-8'): string
     {
         $simpleXmlElement = $this->expandSimpleXml($version, $encoding);
         // https://www.php.net/manual/en/simplexmlelement.asxml.php
