@@ -2,6 +2,7 @@ parameters:
 	level: 8
 	excludePaths:
 		- vendor
+		- src/Parsers/OtherSimpleXmlReader.php
 	paths:
 		- src
 	treatPhpDocTypesAsCertain: false

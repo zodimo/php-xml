@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Zodimo\Xml\Tests\Benchmark;
 
-use Zodimo\Xml\NoOpSaxParser;
+use Zodimo\Xml\Parsers\NoOpSaxParser;
 
 /**
  * @internal

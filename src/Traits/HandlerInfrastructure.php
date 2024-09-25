@@ -7,11 +7,11 @@ namespace Zodimo\Xml\Traits;
 use Zodimo\BaseReturn\IOMonad;
 use Zodimo\BaseReturn\Option;
 use Zodimo\BaseReturn\Tuple;
-use Zodimo\Xml\CanRegisterWithXmlParser;
 use Zodimo\Xml\Errors\XmlParserException;
-use Zodimo\Xml\HandlerRegistration;
-use Zodimo\Xml\HandlerRegistrationId;
-use Zodimo\Xml\XmlParserInterface;
+use Zodimo\Xml\Parsers\CanRegisterWithXmlParser;
+use Zodimo\Xml\Parsers\XmlParserInterface;
+use Zodimo\Xml\Registration\HandlerRegistration;
+use Zodimo\Xml\Registration\HandlerRegistrationId;
 
 /**
  * @template ERR

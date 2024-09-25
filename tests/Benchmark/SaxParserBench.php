@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Zodimo\Xml\Tests\Integration;
 
-use Zodimo\Xml\SaxParser;
+use Zodimo\Xml\Parsers\SaxParser;
 
 /**
  * @internal
