@@ -53,4 +53,30 @@ class XmlReaderParserTest extends TestCase
         $this->assertTrue($result->isSuccess());
         $this->assertEquals(10000, $counter);
     }
+
+    public function testCanParseXmlString(): void
+    {
+        $xmlString = <<<'XML'
+            <?xml version="1.0"?>
+            <root>
+            <user>
+                <name>name1</name>
+                <age>1</age>
+            </user>
+            <user>
+                <name>name2</name>
+                <age>2</age>
+            </user>
+            </root>
+            XML;
+
+        $parser = XmlReaderParser::create();
+        $callback = $this->createClosureMock();
+        $callback->expects($this->exactly(2))->method('__invoke')->with($this->isInstanceOf(SimpleXmlReaderInterface::class))->willReturn(true);
+        $registerResult = $parser->registerCallback('/root/user', $callback);
+
+        $parseFileResult = $registerResult->flatMap(fn ($parser) => $parser->parseString($xmlString));
+
+        $this->assertTrue($parseFileResult->isSuccess());
+    }
 }
