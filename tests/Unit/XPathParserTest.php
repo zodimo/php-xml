@@ -68,4 +68,16 @@ class XPathParserTest extends TestCase
         $parseFileResult = $parser->parseFile($filePath);
         $this->assertTrue($parseFileResult->isFailure());
     }
+
+    public function testCanCallParseXmlString(): void
+    {
+        $xmlString = '<root/>';
+
+        $xpath = '/';
+        $mockCallback = $this->createClosureMock();
+        $parser = XPathParser::create($xpath, $mockCallback);
+        $parseFileResult = $parser->parseString($xmlString);
+
+        $this->assertTrue($parseFileResult->isSuccess());
+    }
 }

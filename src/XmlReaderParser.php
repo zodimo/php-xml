@@ -7,6 +7,7 @@ namespace Zodimo\Xml;
 use DOMDocument;
 use SimpleXMLElement;
 use Throwable;
+use Webmozart\Assert\Assert;
 use XMLReader;
 use Zodimo\BaseReturn\IOMonad;
 use Zodimo\Xml\Errors\XmlParserException;
@@ -105,11 +106,14 @@ class XmlReaderParser implements XmlParserInterface, RegisterListenerInterface, 
             // https://www.php.net/manual/en/xmlreader.open.php
             // Returns true on success or false on failure. If called statically, returns an XMLReader or false on failure.
             $encoding = $options['encoding'] ?? null;
-            // encodinig = string
-            $flags = $options['flags'] ?? 0;
-            // fags = int
+            if (!is_null($encoding)) {
+                Assert::stringNotEmpty($encoding, 'The document encoding as string or null.');
+            }
 
-            $result = $this->reader->open($xmlFile, $encoding, $flags);
+            $libXmlOptions = $options['flags'] ?? 0;
+            Assert::greaterThanEq($libXmlOptions, 0, 'Expects positive int: Bitwise OR of the libxml option constants.');
+
+            $result = $this->reader->open($xmlFile, $encoding, $libXmlOptions);
             if (false === $result) {
                 // @phpstan-ignore return.type
                 return IOMonad::fail(XmlParsingException::create('Could not create XMLReader'));
@@ -389,6 +393,37 @@ class XmlReaderParser implements XmlParserInterface, RegisterListenerInterface, 
 
         // @phpstan-ignore return.type
         return IOMonad::pure($clone);
+    }
+
+    public function parseString(string $xmlString, array $options = []): IOMonad
+    {
+        try {
+            // https://www.php.net/manual/en/xmlreader.open.php
+            // Returns true on success or false on failure. If called statically, returns an XMLReader or false on failure.
+            $encoding = $options['encoding'] ?? null;
+            if (!is_null($encoding)) {
+                Assert::stringNotEmpty($encoding, 'The document encoding as string or null.');
+            }
+
+            $libXmlOptions = $options['flags'] ?? 0;
+            Assert::greaterThanEq($libXmlOptions, 0, 'Expects positive int: Bitwise OR of the libxml option constants.');
+
+            $result = $this->reader->XML($xmlString, $encoding, $libXmlOptions);
+            if (false === $result) {
+                // @phpstan-ignore return.type
+                return IOMonad::fail(XmlParsingException::create('Could not create XMLReader'));
+            }
+        } catch (Throwable $e) {
+            if ($e instanceof XmlParsingException) {
+                // @phpstan-ignore return.type
+                return IOMonad::fail($e);
+            }
+
+            // @phpstan-ignore return.type
+            return IOMonad::fail(XmlParsingException::create('XMLReader error', 0, $e));
+        }
+
+        return $this->parse();
     }
 
     /**

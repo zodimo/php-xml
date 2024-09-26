@@ -52,4 +52,28 @@ class XPathParserTest extends TestCase
         $this->assertTrue($result->isSuccess());
         $this->assertEquals(10000, $counter);
     }
+
+    public function testCanParseXmlString(): void
+    {
+        $xmlString = <<<'XML'
+            <?xml version="1.0"?>
+            <root>
+            <user>
+                <name>name1</name>
+                <age>1</age>
+            </user>
+            <user>
+                <name>name2</name>
+                <age>2</age>
+            </user>
+            </root>
+            XML;
+
+        $callback = $this->createClosureMock();
+        $callback->expects($this->exactly(2))->method('__invoke')->with($this->isInstanceOf(SimpleXMLElement::class))->willReturn(true);
+        $xpathParser = XPathParser::create('/root/user', $callback);
+
+        $result = $xpathParser->parseString($xmlString);
+        $this->assertTrue($result->isSuccess());
+    }
 }

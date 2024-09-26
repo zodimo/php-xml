@@ -69,7 +69,7 @@ class XmlReaderParserTest extends TestCase
     {
         $filePath = __DIR__.'/../Resources/10.xml.gz';
         $parser = XmlReaderParser::create();
-        $registerResult = $parser->registerCallback('/', $this->createClosureMock());
+        $registerResult = $parser->registerCallback('/root/user', $this->createClosureMock());
 
         $parseFileResult = $registerResult->flatMap(fn ($parser) => $parser->parseGzipFile($filePath));
 
@@ -80,9 +80,19 @@ class XmlReaderParserTest extends TestCase
     {
         $filePath = __DIR__.'/../Resources/10.xml.gz';
         $parser = XmlReaderParser::create();
-        $registerResult = $parser->registerCallback('/', $this->createClosureMock());
+        $registerResult = $parser->registerCallback('/root/user', $this->createClosureMock());
         $parseFileResult = $registerResult->flatMap(fn ($parser) => $parser->parseFile($filePath));
 
         $this->assertTrue($parseFileResult->isFailure());
+    }
+
+    public function testCanCallParseXmlString(): void
+    {
+        $xmlString = '<root/>';
+        $parser = XmlReaderParser::create();
+        $registerResult = $parser->registerCallback('/', $this->createClosureMock());
+        $parseFileResult = $registerResult->flatMap(fn ($parser) => $parser->parseString($xmlString));
+
+        $this->assertTrue($parseFileResult->isSuccess());
     }
 }

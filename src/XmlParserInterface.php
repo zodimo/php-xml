@@ -23,4 +23,11 @@ interface XmlParserInterface
      * @return IOMonad<void,XmlParserException|XmlParsingException>
      */
     public function parseGzipFile(string $gzXmlFile, array $options = []): IOMonad;
+
+    /**
+     * @param array<string,mixed> $options
+     *
+     * @return IOMonad<void,XmlParserException|XmlParsingException>
+     */
+    public function parseString(string $xmlString, array $options = []): IOMonad;
 }

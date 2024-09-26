@@ -55,21 +55,7 @@ class XPathParser implements XmlParserInterface
                 // @phpstan-ignore return.type
                 return IOMonad::fail(XmlParsingException::create('Could not load file'));
             }
-            $xpathResultSet = $simpleXml->xpath($this->xpath);
-
-            if (!is_array($xpathResultSet)) {
-                // @phpstan-ignore return.type
-                return IOMonad::fail(XmlParsingException::create('Could not evaluate xpath'));
-            }
-            $continue = true;
-            foreach ($xpathResultSet as $xpathResult) {
-                if (true === $continue) {
-                    $cb = $this->callback;
-                    $continue = $cb($xpathResult);
-                } else {
-                    break;
-                }
-            }
+            $this->evaluateXPathUnsafe($simpleXml);
 
             // @phpstan-ignore return.type
             return IOMonad::pure(null);
@@ -109,5 +95,58 @@ class XPathParser implements XmlParserInterface
         $wrappedUri = call_user_func($wrapGzip, $gzXmlFile);
 
         return $this->parseFile($wrappedUri, $options);
+    }
+
+    public function parseString(string $xmlString, array $options = []): IOMonad
+    {
+        try {
+            $className = $options['className'] ?? SimpleXMLElement::class;
+            Assert::stringNotEmpty($className, 'className cannot be empty');
+            $libXmlOptions = $options['options'] ?? 0;
+            Assert::greaterThanEq($libXmlOptions, 0, 'Expects positive int: Bitwise OR of the libxml option constants.');
+            $namespaceOrPrefix = $options['namespaceOrPrefix'] ?? '';
+            Assert::string($namespaceOrPrefix, 'String expected');
+            $isPrefix = $options['isPrefix'] ?? false;
+            Assert::boolean($isPrefix, 'Boolean expected');
+
+            $simpleXml = simplexml_load_string($xmlString, $className, $libXmlOptions, $namespaceOrPrefix, $isPrefix);
+            if (!$simpleXml instanceof SimpleXMLElement) {
+                // @phpstan-ignore return.type
+                return IOMonad::fail(XmlParsingException::create('Could not load file'));
+            }
+            $this->evaluateXPathUnsafe($simpleXml);
+
+            // @phpstan-ignore return.type
+            return IOMonad::pure(null);
+        } catch (Throwable $e) {
+            if ($e instanceof XmlParsingException) {
+                // @phpstan-ignore return.type
+                return IOMonad::fail($e);
+            }
+
+            // @phpstan-ignore return.type
+            return IOMonad::fail(XmlParsingException::create('XPathParser error', 0, $e));
+        }
+    }
+
+    /**
+     * @throws XmlParsingException
+     */
+    private function evaluateXPathUnsafe(SimpleXMLElement $simpleXml): void
+    {
+        $xpathResultSet = $simpleXml->xpath($this->xpath);
+
+        if (!is_array($xpathResultSet)) {
+            throw XmlParsingException::create('Could not evaluate xpath');
+        }
+        $continue = true;
+        foreach ($xpathResultSet as $xpathResult) {
+            if (true === $continue) {
+                $cb = $this->callback;
+                $continue = $cb($xpathResult);
+            } else {
+                break;
+            }
+        }
     }
 }
